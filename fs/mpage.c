@@ -251,6 +251,9 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 		 * we just collected from get_block into the page's buffers
 		 * so readpage doesn't have to repeat the get_block call
 		 */
+		 // So this means the related buffer data has been copied 
+		 // into the page. However, it doesn't allocate buffer heads 
+		 // for the page. @Will
 		if (buffer_uptodate(&bh)) {
 			map_buffer_to_page(page, &bh, page_block);
 			goto confused;
@@ -284,6 +287,8 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	/*
 	 * This page will go to BIO.  Do we need to send this BIO off first?
 	 */
+	 // If the blocks in the last BIO and current blocks in the page are 
+	 // not adjacent, we would send last BIO first. @Will
 	if (bio && (*last_block_in_bio != blocks[0] - 1))
 		bio = mpage_bio_submit(READ, bio);
 
@@ -302,6 +307,10 @@ alloc_new:
 		goto alloc_new;
 	}
 
+	// When boundary is set, it means get_block need I/O for indirect blocks.
+	// Sicne the indirect blocks could be adjacent or near to previous  direct 
+	// blocks. So we read the direct blocks first to move the  magnetic head 
+	// close to indirect blocks. @Will
 	if (buffer_boundary(&bh) || (first_hole != blocks_per_page))
 		bio = mpage_bio_submit(READ, bio);
 	else

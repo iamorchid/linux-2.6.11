@@ -936,7 +936,7 @@ static inline unsigned long target_load(int cpu)
  * search starts with cpus closest then further out as needed,
  * so we always favor a closer, idle cpu.
  *
- * Returns the CPU we should wake onto.
+ * Returns the CPU we should wake the task onto.
  */
 #if defined(ARCH_HAS_SCHED_WAKE_IDLE)
 static int wake_idle(int cpu, task_t *p)
@@ -2189,6 +2189,10 @@ static void rebalance_tick(int this_cpu, runqueue_t *this_rq,
 			continue;
 
 		interval = sd->balance_interval;
+
+		// If current CPU is not idle, we increase the interval by multiplying 
+		// busy_factor to reduce the frequence of rebalance since doing 
+		// rebalance could cause overhead.
 		if (idle != SCHED_IDLE)
 			interval *= sd->busy_factor;
 
@@ -2720,7 +2724,16 @@ need_resched_nonpreemptible:
 		prev->state = EXIT_DEAD;
 
 	switch_count = &prev->nivcsw;
-	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) {
+
+	/*
+	  * PREEMPT_ACTIVE indicates that kernel preemption is happening.
+	  * preempt_schedule is the entry of process schedule for kernel preemption. It 
+	  * sets PREEMPT_ACTIVE before calling schedule and clears it afterwards. So for  
+	  * a process whose state is not TASK_RUNNING, it could be possible that before 
+	  * it's added some wait queue, kernel preemption just happens. And for such 
+	  * case, we should not move it out of the run queue. @Will
+	  */
+	if (prev->state != TASK_RUNNING && !(preempt_count() & PREEMPT_ACTIVE)) {
 		switch_count = &prev->nvcsw;
 		if (unlikely((prev->state & TASK_INTERRUPTIBLE) &&
 				unlikely(signal_pending(prev))))

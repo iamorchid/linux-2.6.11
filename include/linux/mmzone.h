@@ -14,6 +14,7 @@
 #include <asm/atomic.h>
 
 /* Free memory management - zoned buddy allocator.  */
+// The MAX_ORDER below is exclusive. @Will
 #ifndef CONFIG_FORCE_MAX_ZONEORDER
 #define MAX_ORDER 11
 #else

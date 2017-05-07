@@ -209,6 +209,9 @@ badframe:
 asmlinkage int sys_sigreturn(unsigned long __unused)
 {
 	struct pt_regs *regs = (struct pt_regs *) &__unused;
+	// The fields pretcode and sig are pop'ed out from user mode 
+	// stack before calling sys_sigreturn. That's why we need to use 
+	// (regs->esp - 8) to get sigframe base. @Will
 	struct sigframe __user *frame = (struct sigframe __user *)(regs->esp - 8);
 	sigset_t set;
 	int eax;
@@ -589,6 +592,7 @@ int fastcall do_signal(struct pt_regs *regs, sigset_t *oldset)
 	 * kernel mode. Just return without doing anything
 	 * if so.
 	 */
+	 // We only deliver the signal when the execution path
 	if ((regs->xcs & 3) != 3)
 		return 1;
 

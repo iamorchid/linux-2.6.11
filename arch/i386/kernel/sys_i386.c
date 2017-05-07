@@ -50,6 +50,7 @@ static inline long do_mmap2(
 	struct file * file = NULL;
 
 	flags &= ~(MAP_EXECUTABLE | MAP_DENYWRITE);
+	// if MAP_ANONYMOUS is set, we would ignore the fd
 	if (!(flags & MAP_ANONYMOUS)) {
 		file = fget(fd);
 		if (!file)

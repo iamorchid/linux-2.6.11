@@ -567,6 +567,8 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
 	do {
 		if (!buffer_uptodate(tmp))
 			page_uptodate = 0;
+		// If we still have buffers that are not populated, it will go 
+		// to still_busy. @Will
 		if (buffer_async_read(tmp)) {
 			BUG_ON(!buffer_locked(tmp));
 			goto still_busy;
@@ -579,6 +581,8 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
 	 * If none of the buffers had errors and they are all
 	 * uptodate then we can set the page uptodate.
 	 */
+	 // The following piece of logic would only be executed 
+	 // after all buffers in the page are populated. @Will
 	if (page_uptodate && !PageError(page))
 		SetPageUptodate(page);
 	unlock_page(page);
@@ -2100,6 +2104,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 				if (get_block(inode, iblock, bh, 0))
 					SetPageError(page);
 			}
+			// current block could correspond a hole @Will
 			if (!buffer_mapped(bh)) {
 				void *kaddr = kmap_atomic(page, KM_USER0);
 				memset(kaddr + i * blocksize, 0, blocksize);

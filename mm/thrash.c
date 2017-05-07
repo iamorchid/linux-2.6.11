@@ -79,6 +79,9 @@ void grab_swap_token(void)
 		if ((reason = should_release_swap_token(mm))) {
 			unsigned long eligible = jiffies;
 			if (reason == SWAP_TOKEN_TIMED_OUT) {
+				// This a punishment for the process that holds swap token since 
+				// it has held token for too long. And we prevent it from holding the 
+				// token again in the next default timeout. @Will
 				eligible += swap_token_default_timeout;
 			}
 			mm->swap_token_time = eligible;

@@ -413,6 +413,8 @@ static int shrink_list(struct list_head *page_list, struct scan_control *sc)
 			}
 		}
 
+		// See how try_to_unmap_one uses page table entry to check if 
+		// we need to set the dirty bit for the page. @Will
 		if (PageDirty(page)) {
 			if (referenced)
 				goto keep_locked;

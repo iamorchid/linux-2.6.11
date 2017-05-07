@@ -316,17 +316,23 @@ int can_share_swap_page(struct page *page)
 
 	if (!PageLocked(page))
 		BUG();
+	// I think lru_add_drain need be called here. Otherwise, we could 
+	// have page ref by lru_cache_add or lru_cache_add_active. And 
+	// this is unexpected. @Will
 	switch (page_count(page)) {
 	case 3:
+		// Is the page related to buffer head ? @Will
 		if (!PagePrivate(page))
 			break;
 		/* Fallthrough */
 	case 2:
+		// Is the page in swap cache ? @Will
 		if (!PageSwapCache(page))
 			break;
 		retval = exclusive_swap_page(page);
 		break;
 	case 1:
+		// ZERO_PAGE is reserved. @Will
 		if (PageReserved(page))
 			break;
 		retval = 1;

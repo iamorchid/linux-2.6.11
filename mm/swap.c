@@ -181,6 +181,9 @@ void fastcall __page_cache_release(struct page *page)
 	struct zone *zone = page_zone(page);
 
 	spin_lock_irqsave(&zone->lru_lock, flags);
+	// As we see here, when a page is deleted from lru, its ref count 
+	// actually is not decreased. So we we can infer, a page's ref count 
+	// would not be increased when it's added into lru list. @Will
 	if (TestClearPageLRU(page))
 		del_page_from_lru(zone, page);
 	if (page_count(page) != 0)

@@ -2314,6 +2314,10 @@ int shmem_zero_setup(struct vm_area_struct *vma)
 	struct file *file;
 	loff_t size = vma->vm_end - vma->vm_start;
 
+	// shmem_file_setup would always create a new inode and struct file.
+	// So even if the file name used here is constant, the inode returned 
+	// for each call is different. That's why the shared anonymous mapping 
+	// can only be used between parent and child. @Will
 	file = shmem_file_setup("dev/zero", size, vma->vm_flags);
 	if (IS_ERR(file))
 		return PTR_ERR(file);

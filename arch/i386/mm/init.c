@@ -273,6 +273,9 @@ void __init one_highpage_init(struct page *page, int pfn, int bad_ppro)
 	if (page_is_ram(pfn) && !(bad_ppro && page_kills_ppro(pfn))) {
 		ClearPageReserved(page);
 		set_bit(PG_highmem, &page->flags);
+		// Before we call __free_page to put page into free list, we need to set 
+		// the page ref count to 1 since __free_page would firstly dec the page  
+		// count and then add it into free it if its count is 0. @Will
 		set_page_count(page, 1);
 		__free_page(page);
 		totalhigh_pages++;

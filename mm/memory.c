@@ -1300,8 +1300,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct * vma,
 		unlock_page(old_page);
 		if (reuse) {
 			flush_cache_page(vma, address);
-			entry = maybe_mkwrite(pte_mkyoung(pte_mkdirty(pte)),
-					      vma);
+			entry = maybe_mkwrite(pte_mkyoung(pte_mkdirty(pte)), vma);
 			ptep_set_access_flags(vma, address, page_table, entry, 1);
 			update_mmu_cache(vma, address, entry);
 			pte_unmap(page_table);
@@ -1349,6 +1348,9 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct * vma,
 		page_add_anon_rmap(new_page, vma, address);
 
 		/* Free the old page.. */
+		// Initially, when we map the old page in the page table, 
+		// we increase its ref count. Since now the page table 
+		// doens't use it now, we should release it. @Will
 		new_page = old_page;
 	}
 	pte_unmap(page_table);

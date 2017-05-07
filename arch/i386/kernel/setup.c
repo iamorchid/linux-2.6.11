@@ -1034,6 +1034,10 @@ static unsigned long __init setup_memory(void)
 	 * partially used pages are not usable - thus
 	 * we are rounding upwards:
 	 */
+	 // the start_pfn here is the page frame where the bootmem 
+	 // bitmap starts. Check the logic about how init_pg_tables_end
+	 // is initialized in head.S @Will
+	 
 	start_pfn = PFN_UP(init_pg_tables_end);
 
 	find_max_pfn();
@@ -1063,6 +1067,10 @@ static unsigned long __init setup_memory(void)
 	 * the (very unlikely) case of us accidentally initializing the
 	 * bootmem allocator with an invalid RAM area.
 	 */
+	 // The HIGH_MEMORY here is the 1MB physical address where 
+	 // our kernel is located. The logic below is to mark the frames 
+	 // used by kernel code, data, bss, page tables and bootmem 
+	 // bitmap as reserved. @Will
 	reserve_bootmem(HIGH_MEMORY, (PFN_PHYS(start_pfn) +
 			 bootmap_size + PAGE_SIZE-1) - (HIGH_MEMORY));
 

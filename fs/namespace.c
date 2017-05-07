@@ -446,6 +446,10 @@ static int do_umount(struct vfsmount *mnt, int flags)
 	}
 	retval = -EBUSY;
 	if (atomic_read(&mnt->mnt_count) == 2 || flags & MNT_DETACH) {
+		// if mnt->mnt_list is not empty, it means that mnt has been mounted 
+		// on another filesystem under some namespace. Otherwise, this mnt 
+		// is not mounted on any filesystem and detach_mnt is not needed.
+		// @Will
 		if (!list_empty(&mnt->mnt_list))
 			umount_tree(mnt);
 		retval = 0;
@@ -1364,6 +1368,9 @@ static void __init init_mount_tree(void)
 	struct namespace *namespace;
 	struct task_struct *g, *p;
 
+	// Generate init root mount point using rootfs filesystem. 
+	// And all other later filesystem would be mounted on it.
+	// @Will
 	mnt = do_kern_mount("rootfs", 0, "rootfs", NULL);
 	if (IS_ERR(mnt))
 		panic("Can't create rootfs");

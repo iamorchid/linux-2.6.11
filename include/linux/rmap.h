@@ -29,8 +29,6 @@ struct anon_vma {
 	struct list_head head;	/* List of private "related" vmas */
 };
 
-#ifdef CONFIG_MMU
-
 extern kmem_cache_t *anon_vma_cachep;
 
 static inline struct anon_vma *anon_vma_alloc(void)
@@ -96,17 +94,6 @@ int try_to_unmap(struct page *);
  * Used by swapoff to help locate where page is expected in vma.
  */
 unsigned long page_address_in_vma(struct page *, struct vm_area_struct *);
-
-#else	/* !CONFIG_MMU */
-
-#define anon_vma_init()		do {} while (0)
-#define anon_vma_prepare(vma)	(0)
-#define anon_vma_link(vma)	do {} while (0)
-
-#define page_referenced(page,l,i) TestClearPageReferenced(page)
-#define try_to_unmap(page)	SWAP_FAIL
-
-#endif	/* CONFIG_MMU */
 
 /*
  * Return values of try_to_unmap

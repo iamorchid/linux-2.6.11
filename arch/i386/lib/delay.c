@@ -32,6 +32,8 @@ inline void __const_udelay(unsigned long xloops)
 {
 	int d0;
 	xloops *= 4;
+	// mull S -> R[%edx]:R[%eax] = S * R[%eax]
+	// Since we only save high 32 bits into xloops, it has the effect of dividing 2**32
 	__asm__("mull %0"
 		:"=d" (xloops), "=&a" (d0)
 		:"1" (xloops),"0" (cpu_data[_smp_processor_id()].loops_per_jiffy * (HZ/4)));

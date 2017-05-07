@@ -599,13 +599,13 @@ static inline void follow_dotdot(struct vfsmount **mnt, struct dentry **dentry)
 		struct vfsmount *parent;
 		struct dentry *old = *dentry;
 
-                read_lock(&current->fs->lock);
+		read_lock(&current->fs->lock);
 		if (*dentry == current->fs->root &&
 		    *mnt == current->fs->rootmnt) {
-                        read_unlock(&current->fs->lock);
+			read_unlock(&current->fs->lock);
 			break;
 		}
-                read_unlock(&current->fs->lock);
+		read_unlock(&current->fs->lock);
 		spin_lock(&dcache_lock);
 		if (*dentry != (*mnt)->mnt_root) {
 			*dentry = dget((*dentry)->d_parent);

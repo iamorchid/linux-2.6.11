@@ -31,6 +31,9 @@ void *kmap_atomic(struct page *page, enum km_type type)
 	unsigned long vaddr;
 
 	/* even !CONFIG_PREEMPT needs this, for in_atomic in do_page_fault */
+	// We need to diable preempt. Otherwise, current process could be reschueduled.
+	// And when it becomes re-running again, the data could be overriden by other 
+	// process.  @Will
 	inc_preempt_count();
 	if (!PageHighMem(page))
 		return page_address(page);

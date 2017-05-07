@@ -981,9 +981,8 @@ unsigned long do_mmap_pgoff(struct file * file, unsigned long addr,
 			vm_flags |= VM_SHARED | VM_MAYSHARE;
 			break;
 		case MAP_PRIVATE:
-			/*
-			 * Set pgoff according to addr for anon_vma.
-			 */
+ 			/*  Set pgoff according to addr for anon_vma. */
+			// I think pgoff here should not have impact for anon_vma @Will
 			pgoff = addr >> PAGE_SHIFT;
 			break;
 		default:
@@ -1000,6 +999,7 @@ unsigned long do_mmap_pgoff(struct file * file, unsigned long addr,
 munmap_back:
 	vma = find_vma_prepare(mm, addr, &prev, &rb_link, &rb_parent);
 	if (vma && vma->vm_start < addr + len) {
+		// Normally, this only happens when we specify MAP_FIXED @Will
 		if (do_munmap(mm, addr, len))
 			return -ENOMEM;
 		goto munmap_back;

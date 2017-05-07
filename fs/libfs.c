@@ -36,9 +36,13 @@ static int simple_delete_dentry(struct dentry *dentry)
 }
 
 /*
- * Lookup the data. This is trivial - if the dentry didn't already
- * exist, we know it is negative.  Set d_op to delete negative dentries.
+ * Lookup the data. This is trivial - if the dentry didn't already exist, we know 
+ * it is negative.  Set d_op to delete negative dentries.
  */
+ // Since all the dentrys used for rootfs are saved in the in-memory hash table, 
+ // whenever simple_lookup is called (only after failing to find the dentry in the
+ // hash table), it means rootfs doesn't have such an existing dentry.
+ // @Will
 struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
 {
 	static struct dentry_operations simple_dentry_operations = {
@@ -48,6 +52,9 @@ struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, struct na
 	if (dentry->d_name.len > NAME_MAX)
 		return ERR_PTR(-ENAMETOOLONG);
 	dentry->d_op = &simple_dentry_operations;
+
+	// Add the newly created dentry into hash table and mark it negative (namely 
+	// not existing in the searched dir). @Will
 	d_add(dentry, NULL);
 	return NULL;
 }
