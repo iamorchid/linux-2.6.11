@@ -190,6 +190,15 @@ static int ramdisk_set_page_dirty(struct page *page)
 	return 0;
 }
 
+// The operations here defined are only used for direct reading/wring on 
+// "ram disk" block device. Since ram disk is backed by memory pages and
+// there is no real underlying device, we can manipulate the pages directly 
+// and skip the "generic block layer". However, if we've installed specific file 
+// system on the ram disk, we still have to go though "generic block layer" 
+// when we're reading/wring a regular file under that mounted file system.
+// Basically, we need to re-use the framework that includes "mapper layer" 
+// and "generic block layer". Also the aops operations used for the regular 
+// file is file-system specific. @Will
 static struct address_space_operations ramdisk_aops = {
 	.readpage	= ramdisk_readpage,
 	.prepare_write	= ramdisk_prepare_write,

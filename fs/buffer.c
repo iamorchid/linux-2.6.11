@@ -2104,7 +2104,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 				if (get_block(inode, iblock, bh, 0))
 					SetPageError(page);
 			}
-			// current block could correspond a hole @Will
+			// current block could correspond to a hole @Will
 			if (!buffer_mapped(bh)) {
 				void *kaddr = kmap_atomic(page, KM_USER0);
 				memset(kaddr + i * blocksize, 0, blocksize);

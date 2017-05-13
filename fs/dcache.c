@@ -147,6 +147,9 @@ void dput(struct dentry *dentry)
 repeat:
 	if (atomic_read(&dentry->d_count) == 1)
 		might_sleep();
+	
+	// Obtain the spin lock and dec the atomic value. Return true 
+	// if the decreased value becomes 0. @Will
 	if (!atomic_dec_and_lock(&dentry->d_count, &dcache_lock))
 		return;
 
@@ -165,6 +168,10 @@ repeat:
 			goto unhash_it;
 	}
 	/* Unreachable? Get rid of it */
+	// This happens when someone else unlinks the file while we're still 
+	// referencing its dentry. Though that guy doesn't make our dentry 
+	// negative, he removed it from hash list to prevent others reaching 
+	// it. @Will
  	if (d_unhashed(dentry))
 		goto kill_it;
   	if (list_empty(&dentry->d_lru)) {
@@ -1027,15 +1034,18 @@ struct dentry * d_lookup(struct dentry * parent, struct qstr * name)
 	struct dentry * dentry = NULL;
 	unsigned long seq;
 
-        do {
-                seq = read_seqbegin(&rename_lock);
-                dentry = __d_lookup(parent, name);
-                if (dentry)
+	do {
+		seq = read_seqbegin(&rename_lock);
+		dentry = __d_lookup(parent, name);
+		if (dentry)
 			break;
 	} while (read_seqretry(&rename_lock, seq));
 	return dentry;
 }
 
+// Note that when we find a cache in the hash list, we just increase its ref count 
+// and return it. And we don't delete it from dentry_unused list.  The deleting is 
+// lazy and handled in prune_dcache. @Will
 struct dentry * __d_lookup(struct dentry * parent, struct qstr * name)
 {
 	unsigned int len = name->len;
