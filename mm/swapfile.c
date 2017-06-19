@@ -319,9 +319,12 @@ int can_share_swap_page(struct page *page)
 	// I think lru_add_drain need be called here. Otherwise, we could 
 	// have page ref by lru_cache_add or lru_cache_add_active. And 
 	// this is unexpected. @Will
+	// This is fixed in 2.6.24
 	switch (page_count(page)) {
 	case 3:
-		// Is the page related to buffer head ? @Will
+		// The logic here doesn't make sense since how it's possible 
+		// that we define buffer heads for swap page here ? @Will
+		// This is fixed in 2.6.24
 		if (!PagePrivate(page))
 			break;
 		/* Fallthrough */
