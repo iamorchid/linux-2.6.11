@@ -314,6 +314,9 @@ ipt_do_table(struct sk_buff **pskb,
 		IP_NF_ASSERT(e);
 		IP_NF_ASSERT(back);
 		(*pskb)->nfcache |= e->nfcache;
+		
+		// Note that for each chain, it has a final ipt_entry which 
+		// has standard target and matches all ip_packet. Will
 		if (ip_packet_match(ip, indev, outdev, &e->ip, offset)) {
 			struct ipt_entry_target *t;
 
@@ -330,6 +333,8 @@ ipt_do_table(struct sk_buff **pskb,
 			if (!t->u.kernel.target->target) {
 				int v;
 
+				// if verdict >= 0, it points to user defined chain which 
+				// ends with ipt_entry have verfict IPT_RETURN. Will
 				v = ((struct ipt_standard_target *)t)->verdict;
 				if (v < 0) {
 					/* Pop from stack? */

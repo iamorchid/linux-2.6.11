@@ -202,7 +202,7 @@ static inline int ip_finish_output2(struct sk_buff *skb)
 		hh_alen = HH_DATA_ALIGN(hh->hh_len);
   		memcpy(skb->data - hh_alen, hh->hh_data, hh_alen);
 		read_unlock_bh(&hh->hh_lock);
-	        skb_push(skb, hh->hh_len);
+		skb_push(skb, hh->hh_len);
 		return hh->hh_output(skb);
 	} else if (dst->neighbour)
 		return dst->neighbour->output(skb);

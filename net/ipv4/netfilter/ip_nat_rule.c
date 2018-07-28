@@ -286,6 +286,7 @@ static struct ipt_target ipt_dnat_reg = {
 	.checkentry	= ipt_dnat_checkentry,
 };
 
+// NAT table and targets  initialization
 int __init ip_nat_rule_init(void)
 {
 	int ret;

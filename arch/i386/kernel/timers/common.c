@@ -43,6 +43,10 @@ unsigned long __init calibrate_tsc(void)
 			goto bad_ctc;
 
 		/* 64-bit subtract - gcc just messes up with long longs */
+		// CF flag is used to indicate when an arithmetic carry or borrow has been 
+		// generated out of the most significant ALU bit position. 
+		// sbbl: subtracts (operand1 and the carry flag) from operand2
+		// Will
 		__asm__("subl %2,%0\n\t"
 			"sbbl %3,%1"
 			:"=a" (endlow), "=d" (endhigh)

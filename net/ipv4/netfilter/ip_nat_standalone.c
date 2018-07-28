@@ -232,6 +232,7 @@ ip_nat_local_fn(unsigned int hooknum,
 
 /* We must be after connection tracking and before packet filtering. */
 
+// nf hook that's used to implement DNAT - Will
 /* Before packet filtering, change destination */
 static struct nf_hook_ops ip_nat_in_ops = {
 	.hook		= ip_nat_in,

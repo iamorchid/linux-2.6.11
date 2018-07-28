@@ -870,6 +870,7 @@ static inline void netlink_rcv_wake(struct sock *sk)
 {
 	struct netlink_opt *nlk = nlk_sk(sk);
 
+    // 0 bit indicates if we have netlink congestion
 	if (!skb_queue_len(&sk->sk_receive_queue))
 		clear_bit(0, &nlk->state);
 	if (!test_bit(0, &nlk->state))

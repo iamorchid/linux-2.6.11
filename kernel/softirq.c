@@ -164,6 +164,8 @@ EXPORT_SYMBOL(local_bh_enable);
 void irq_exit(void)
 {
 	account_system_vtime(current);
+	// It's tricky here. We exit from the interrupt context.
+	// However,  we don't want preemptible enabled.
 	sub_preempt_count(IRQ_EXIT_OFFSET);
 	if (!in_interrupt() && local_softirq_pending())
 		invoke_softirq();

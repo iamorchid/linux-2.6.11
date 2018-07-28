@@ -376,6 +376,7 @@ static unsigned int nf_iterate(struct list_head *head,
 			break;
 
 #ifdef CONFIG_NETFILTER_DEBUG
+		// continue with next hook for NF_ACCEPT
 		case NF_ACCEPT:
 			break;
 
