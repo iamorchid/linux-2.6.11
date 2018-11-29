@@ -607,6 +607,9 @@ static inline void follow_dotdot(struct vfsmount **mnt, struct dentry **dentry)
 		}
 		read_unlock(&current->fs->lock);
 		spin_lock(&dcache_lock);
+		// case #1:
+		// dentry is not the root of a mount point, which means it won't  hide  
+		// any other dentry. So we can get its parent directly. @Will
 		if (*dentry != (*mnt)->mnt_root) {
 			*dentry = dget((*dentry)->d_parent);
 			spin_unlock(&dcache_lock);
@@ -615,11 +618,18 @@ static inline void follow_dotdot(struct vfsmount **mnt, struct dentry **dentry)
 		}
 		spin_unlock(&dcache_lock);
 		spin_lock(&vfsmount_lock);
+		// case #2:
+		// dentry is the root of root mount point. We just return it. @Will
 		parent = (*mnt)->mnt_parent;
 		if (parent == *mnt) {
 			spin_unlock(&vfsmount_lock);
 			break;
 		}
+		// case #3:
+		// dentry is the root of a non-root mount point, which dentry must 
+		// hide another dentry (namely mnt->mnt_mountpoint). And we 
+		// have to recursively find the hiden dentry from root mount point. 
+		// @Will
 		mntget(parent);
 		*dentry = dget((*mnt)->mnt_mountpoint);
 		spin_unlock(&vfsmount_lock);
@@ -763,6 +773,8 @@ int fastcall link_path_walk(const char * name, struct nameidata *nd)
 		/* Check mountpoints.. */
 		follow_mount(&next.mnt, &next.dentry);
 
+		// Check if the dentry is negative (namely it has no i_node 
+		// associated, i.e. its inode/file is deleted). @Will
 		err = -ENOENT;
 		inode = next.dentry->d_inode;
 		if (!inode)
@@ -1428,10 +1440,14 @@ do_last:
 	 */
 	up(&dir->d_inode->i_sem);
 
+    // O_EXCL: ensure that this call creates the file. @Will
 	error = -EEXIST;
 	if (flag & O_EXCL)
 		goto exit_dput;
 
+    // We can create bind mount for a file like:
+    // "mount --bind file1 file2"
+    // @Will
 	if (d_mountpoint(dentry)) {
 		error = -ELOOP;
 		if (flag & O_NOFOLLOW)
@@ -1527,6 +1543,8 @@ struct dentry *lookup_create(struct nameidata *nd, int is_dir)
 	dentry = lookup_hash(&nd->last, nd->dentry);
 	if (IS_ERR(dentry))
 		goto fail;
+	// if nd->last.name[nd->last.len] is not 0, nd-last is not last 
+	// component of a path. @Will
 	if (!is_dir && nd->last.name[nd->last.len] && !dentry->d_inode)
 		goto enoent;
 	return dentry;
@@ -1979,9 +1997,12 @@ asmlinkage long sys_link(const char __user * oldname, const char __user * newnam
 	error = path_lookup(to, LOOKUP_PARENT, &nd);
 	if (error)
 		goto out;
+
+	// Hard-link should only be usable on the same fs. @Will
 	error = -EXDEV;
 	if (old_nd.mnt != nd.mnt)
 		goto out_release;
+
 	new_dentry = lookup_create(&nd, 0);
 	error = PTR_ERR(new_dentry);
 	if (!IS_ERR(new_dentry)) {

@@ -251,6 +251,8 @@ int simple_link(struct dentry *old_dentry, struct inode *dir, struct dentry *den
 	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
 	inode->i_nlink++;
 	atomic_inc(&inode->i_count);
+	//We do dget so that this dentry is kept and managed in memory 
+	// by us. Otherwise, VFS could release it. @Will
 	dget(dentry);
 	d_instantiate(dentry, inode);
 	return 0;

@@ -693,6 +693,8 @@ struct super_block *get_sb_bdev(struct file_system_type *fs_type,
 		goto out;
 
 	if (s->s_root) {
+		// Find an in-use super block that's created on the device. Check 
+		// if the newly flags are compatible  with the flats in use. @Will
 		if ((flags ^ s->s_flags) & MS_RDONLY) {
 			up_write(&s->s_umount);
 			deactivate_super(s);

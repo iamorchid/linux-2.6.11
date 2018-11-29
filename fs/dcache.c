@@ -1168,7 +1168,13 @@ out:
  * Turn the dentry into a negative dentry if possible, otherwise
  * remove it from the hash queues so it can be deleted later
  */
- 
+ // if we turn the dentry into negative (d_inode set to null), 
+ // we still leave it in hash queue and it can be re-used (e.g, 
+ // when we create the same file again) while user has to 
+ // check if it's negative or not. 
+ // However, if we remove it from the hash queue, it won't 
+ // be re-usable any more. 
+ // @Will
 void d_delete(struct dentry * dentry)
 {
 	/*

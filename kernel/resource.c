@@ -151,6 +151,7 @@ __initcall(ioresources_init);
 /* Return the conflict entry if you can't request it */
 static struct resource * __request_resource(struct resource *root, struct resource *new)
 {
+	// resource end is inclusive @Will
 	unsigned long start = new->start;
 	unsigned long end = new->end;
 	struct resource *tmp, **p;
@@ -428,6 +429,11 @@ EXPORT_SYMBOL(adjust_resource);
  *
  * Release-region releases a matching busy region.
  */
+ 
+ //__request_region is used by drvier to reserve resource regions only used 
+ // by itself (see rtl8139_pci_driver). And  __request_resource is commonly 
+ // used in allocation resources in  pcibios_allocate_resources. Need to fully 
+ // understand their diffs. @Will
 struct resource * __request_region(struct resource *parent, unsigned long start, unsigned long n, const char *name)
 {
 	struct resource *res = kmalloc(sizeof(*res), GFP_KERNEL);
@@ -436,6 +442,7 @@ struct resource * __request_region(struct resource *parent, unsigned long start,
 		memset(res, 0, sizeof(*res));
 		res->name = name;
 		res->start = start;
+		// resource end is inclusive @Will
 		res->end = start + n - 1;
 		res->flags = IORESOURCE_BUSY;
 
@@ -444,11 +451,22 @@ struct resource * __request_region(struct resource *parent, unsigned long start,
 		for (;;) {
 			struct resource *conflict;
 
+			// __request_resource can returns the following values:
+			// 1) parent
+			//      Requested resource is beyond resource region of parent (request not satisfied)
+			// 2) NULL
+			//      New child resource region is allocated from parent (request satified)
+			// 3) Existing child resource region from parent
+			//     a) The child region was busy/once requested by others (request not satisfied)
+			//     b) Recursive request region from the returned child region
 			conflict = __request_resource(parent, res);
 			if (!conflict)
 				break;
+			
 			if (conflict != parent) {
 				parent = conflict;
+				// IORESOURCE_BUSY means the resource region is already 
+				// requested by others. @Will
 				if (!(conflict->flags & IORESOURCE_BUSY))
 					continue;
 			}
