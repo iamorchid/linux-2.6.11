@@ -1420,7 +1420,8 @@ static void sample_queue(unsigned long dummy)
  *	NET_RX_DROP     (packet was dropped)
  *
  */
-
+// This used by non-NAPI drivers. For non-NAPI devcies, they share input_pkt_queue
+// used by each CPU. And those upgraded to NAPI use their own private queues.
 int netif_rx(struct sk_buff *skb)
 {
 	int this_cpu;
@@ -1643,6 +1644,8 @@ int netif_receive_skb(struct sk_buff *skb)
 
 	__get_cpu_var(netdev_rx_stat).total++;
 
+	// The driver has set up skb->mac.raw to point to eth header and 
+	// moved skb->data to skip eth header (see eth_type_trans func).
 	skb->h.raw = skb->nh.raw = skb->data;
 	skb->mac_len = skb->nh.raw - skb->mac.raw;
 
@@ -1714,6 +1717,13 @@ out:
 	return ret;
 }
 
+/**
+ * budget is the max number of packets that net_rx_action can handle in one round  for 
+ * all devices. The field weight in struct net_device is the number of packets  that a 
+ * device can handle continuously before it offers the chance to other device. The quota 
+ * field in struct net_device is used to record how much weight have been not used since 
+ * last processing (it would be re-initialized using weight if it's <= 0).
+ */
 static int process_backlog(struct net_device *backlog_dev, int *budget)
 {
 	int work = 0;

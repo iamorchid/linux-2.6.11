@@ -686,6 +686,10 @@ static struct inode * get_new_inode_fast(struct super_block *sb, struct hlist_he
 		spin_unlock(&inode_lock);
 		destroy_inode(inode);
 		inode = old;
+
+		// Wait for the I_LOCK to be cleared (namely wait for the guy 
+		// creating the inode to finish init the inode and then the 
+		// flags I_LOCK|I_NEW would be cleared. See iget). @Will
 		wait_on_inode(inode);
 	}
 	return inode;

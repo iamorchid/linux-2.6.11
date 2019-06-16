@@ -161,17 +161,18 @@ unsigned short eth_type_trans(struct sk_buff *skb, struct net_device *dev)
 	struct ethhdr *eth;
 	unsigned char *rawp;
 	
-	skb->mac.raw=skb->data;
-	skb_pull(skb,ETH_HLEN);
+	skb->mac.raw = skb->data;
+	// move skb->data poiter to skip eth header
+	skb_pull(skb, ETH_HLEN);
 	eth = eth_hdr(skb);
 	skb->input_dev = dev;
 	
 	if(*eth->h_dest&1)
 	{
-		if(memcmp(eth->h_dest,dev->broadcast, ETH_ALEN)==0)
-			skb->pkt_type=PACKET_BROADCAST;
+		if(memcmp(eth->h_dest, dev->broadcast, ETH_ALEN)==0)
+			skb->pkt_type = PACKET_BROADCAST;
 		else
-			skb->pkt_type=PACKET_MULTICAST;
+			skb->pkt_type = PACKET_MULTICAST;
 	}
 	
 	/*
@@ -184,8 +185,9 @@ unsigned short eth_type_trans(struct sk_buff *skb, struct net_device *dev)
 	 
 	else if(1 /*dev->flags&IFF_PROMISC*/)
 	{
-		if(memcmp(eth->h_dest,dev->dev_addr, ETH_ALEN))
-			skb->pkt_type=PACKET_OTHERHOST;
+		// By default, skb->pkt_type is 0 (PACKET_HOST), namely sent to us.
+		if(memcmp(eth->h_dest, dev->dev_addr, ETH_ALEN))
+			skb->pkt_type = PACKET_OTHERHOST;
 	}
 	
 	if (ntohs(eth->h_proto) >= 1536)

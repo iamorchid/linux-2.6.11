@@ -805,6 +805,9 @@ readpage:
 			goto readpage_error;
 
 		if (!PageUptodate(page)) {
+			// Wait until readpage completes (which unlocks the page).
+			// The page has been locked previously and locking again 
+			// would put the current process to sleep. @Will
 			lock_page(page);
 			if (!PageUptodate(page)) {
 				if (page->mapping == NULL) {

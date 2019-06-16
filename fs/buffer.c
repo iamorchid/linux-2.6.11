@@ -1950,9 +1950,15 @@ static int __block_prepare_write(struct inode *inode, struct page *page,
 			}
 			continue;
 		}
+		
+		// Clear previously set BH_New flag as get_block would also set 
+		// it if new block is created in underlying fs. @Will
 		if (buffer_new(bh))
 			clear_buffer_new(bh);
+		
 		if (!buffer_mapped(bh)) {
+			// Here we specify 1 (create new file block if the file 
+			// doesn't include this block). @Will
 			err = get_block(inode, block, bh, 1);
 			if (err)
 				goto out;
@@ -2782,6 +2788,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhs[])
 	for (i = 0; i < nr; i++) {
 		struct buffer_head *bh = bhs[i];
 
+		// lock the buffer to indicate that it's under data transfer. @Will 
 		if (test_set_buffer_locked(bh))
 			continue;
 
@@ -2799,6 +2806,8 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhs[])
 				continue;
 			}
 		}
+
+		// OK. No need to submit bh. @Will
 		unlock_buffer(bh);
 		put_bh(bh);
 	}

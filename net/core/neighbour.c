@@ -1145,6 +1145,8 @@ int neigh_resolve_output(struct sk_buff *skb)
 	if (!dst || !(neigh = dst->neighbour))
 		goto discard;
 
+	// Move skb->data position to skb->nh.raw. Thus ignore any 
+	// posible previously populated L2 header.
 	__skb_pull(skb, skb->nh.raw - skb->data);
 
 	if (!neigh_event_send(neigh, skb)) {
@@ -1153,7 +1155,9 @@ int neigh_resolve_output(struct sk_buff *skb)
 		if (dev->hard_header_cache && !dst->hh) {
 			write_lock_bh(&neigh->lock);
 			if (!dst->hh)
+				// initialize hh_cache which is used in ip_finish_output2
 				neigh_hh_init(neigh, dst, dst->ops->protocol);
+			// populate L2 header field by field
 			err = dev->hard_header(skb, dev, ntohs(skb->protocol),
 					       neigh->ha, NULL, skb->len);
 			write_unlock_bh(&neigh->lock);

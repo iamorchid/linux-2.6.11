@@ -536,10 +536,9 @@ net_rx(struct net_device *dev)
 
 	if (net_debug > 3)printk("%s: received %d byte packet of type %x\n",
                                  dev->name, length,
-                                 (skb->data[ETH_ALEN+ETH_ALEN] << 8)
-				 | skb->data[ETH_ALEN+ETH_ALEN+1]);
+                                 (skb->data[ETH_ALEN+ETH_ALEN] << 8)| skb->data[ETH_ALEN+ETH_ALEN+1]);
 
-        skb->protocol=eth_type_trans(skb,dev);
+	skb->protocol = eth_type_trans(skb,dev);
 	netif_rx(skb);
 	dev->last_rx = jiffies;
 	lp->stats.rx_packets++;
