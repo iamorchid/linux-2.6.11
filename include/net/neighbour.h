@@ -133,8 +133,15 @@ struct neighbour
 	__u8			dead;
 	atomic_t		probes;
 	rwlock_t		lock;
+
+	// This is initialized by arp_process through neigh_update
 	unsigned char		ha[(MAX_ADDR_LEN+sizeof(unsigned long)-1)&~(sizeof(unsigned long)-1)];
+	
+	// For a neighbour, hard harder cache here is a list. In the L2 header (such as eth header), 
+	// there is L3 protocol info (such as network layer protocol in eth header). Thus, for each 
+	// L3 protocol, we need to prepare a hh cache.
 	struct hh_cache		*hh;
+	
 	atomic_t		refcnt;
 	int			(*output)(struct sk_buff *skb);
 	struct sk_buff_head	arp_queue;

@@ -197,6 +197,8 @@ struct sk_buff {
 	struct sk_buff_head	*list;
 	struct sock		*sk;
 	struct timeval		stamp;
+
+	// What's the difference for the following 3 fields ?
 	struct net_device	*dev;
 	struct net_device	*input_dev;
 	struct net_device	*real_dev;

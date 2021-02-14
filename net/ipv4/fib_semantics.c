@@ -86,13 +86,18 @@ static struct
 {
 	int	error;
 	u8	scope;
-} fib_props[RTA_MAX + 1] = {
+} fib_props[RTN_MAX + 1] = {
         {
 		.error	= 0,
 		.scope	= RT_SCOPE_NOWHERE,
 	},	/* RTN_UNSPEC */
 	{
 		.error	= 0,
+		// For RTN_UNICAST, its route scope can correspond to both RT_SCOPE_LINK and 
+		// RT_SCOPE_UNIVERSE depending on the dst address. For address in local network, 
+		// the route scope would be RT_SCOPE_LINK (see how RT_SCOPE_LINK and fib_magic 
+		// handle RTN_UNICAST). Otherwise, it would be RT_SCOPE_UNIVERSE (see how it's 
+		// set in fib_convert_rtentry).
 		.scope	= RT_SCOPE_UNIVERSE,
 	},	/* RTN_UNICAST */
 	{
@@ -843,9 +848,13 @@ int fib_semantic_match(struct list_head *head, const struct flowi *flp,
 		    fa->fa_tos != flp->fl4_tos)
 			continue;
 
+		// We need a route with a narrower scope than the one specified with the search key
+		// RT_SCOPE_UNIVERSE=0, ..., RT_SCOPE_LINK=253, RT_SCOPE_HOST=254
+		// The larger the scope is, the narrower it is.
 		if (fa->fa_scope < flp->fl4_scope)
 			continue;
 
+		// this flag will be taken into account to decide whether the cache should be flushed
 		fa->fa_state |= FA_S_ACCESSED;
 
 		err = fib_props[fa->fa_type].error;
@@ -1126,13 +1135,18 @@ fib_convert_rtentry(int cmd, struct nlmsghdr *nl, struct rtmsg *rtm,
      referring to it.
    - device went down -> we must shutdown all nexthops going via it.
  */
-
+// The value of force can be 0, 1 or 2.
 int fib_sync_down(u32 local, struct net_device *dev, int force)
 {
 	int ret = 0;
+
+	// scope specifies the routes want to keep and it corresponds to the scope 
+	// of next hop. So RT_SCOPE_NOWHERE means want to keep routes for locally 
+	// configured addresses.
 	int scope = RT_SCOPE_NOWHERE;
 	
 	if (force)
+		// We delete all eligible routes reguardless of the scope.
 		scope = -1;
 
 	if (local && fib_info_laddrhash) {

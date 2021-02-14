@@ -9,7 +9,9 @@ struct fib_alias {
 	struct list_head	fa_list;
 	struct fib_info		*fa_info;
 	u8			fa_tos;
+	// RTN_LOCAL, RTN_UNICAST, RTN_BROADCAST ...
 	u8			fa_type;
+	// RT_SCOPE_UNIVERSE, ..., RT_SCOPE_LINK, RT_SCOPE_HOST, RT_SCOPE_NOWHERE
 	u8			fa_scope;
 	u8			fa_state;
 };

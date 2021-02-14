@@ -811,6 +811,7 @@ static void neigh_timer_handler(unsigned long arg)
 		neigh->timer.expires = next;
 		add_timer(&neigh->timer);
 	}
+	
 	if (neigh->nud_state & (NUD_INCOMPLETE | NUD_PROBE)) {
 		struct sk_buff *skb = skb_peek(&neigh->arp_queue);
 		/* keep skb alive even if arp_queue overflows */
@@ -851,6 +852,7 @@ int __neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 			atomic_set(&neigh->probes, neigh->parms->ucast_probes);
 			neigh->nud_state     = NUD_INCOMPLETE;
 			neigh_hold(neigh);
+			// neigh_timer_handler would kick off solicit
 			neigh->timer.expires = now + 1;
 			add_timer(&neigh->timer);
 		} else {
