@@ -558,10 +558,14 @@ resolve_normal_ct(struct sk_buff *skb,
 	IP_NF_ASSERT((skb->nh.iph->frag_off & htons(IP_OFFSET)) == 0);
 
 	if (!ip_ct_get_tuple(skb->nh.iph, skb, skb->nh.iph->ihl*4, 
-				&tuple,proto))
+				&tuple, proto))
 		return NULL;
 
 	/* look for tuple match */
+	// Note that the direction in just created tuple won't be used 
+	// as the condition to look for ip_conntrack_tuple_hash (we don't 
+	// have enough information about the direction yet though it's 
+	// initialized as IP_CT_DIR_ORIGINAL).
 	h = ip_conntrack_find_get(&tuple, NULL);
 	if (!h) {
 		h = init_conntrack(&tuple, proto, skb);
@@ -657,7 +661,7 @@ unsigned int ip_conntrack_in(unsigned int hooknum,
 		return -ret;
 	}
 
-	if (!(ct = resolve_normal_ct(*pskb, proto,&set_reply,hooknum,&ctinfo))) {
+	if (!(ct = resolve_normal_ct(*pskb, proto, &set_reply, hooknum, &ctinfo))) {
 		/* Not valid part of a connection */
 		CONNTRACK_STAT_INC(invalid);
 		return NF_ACCEPT;

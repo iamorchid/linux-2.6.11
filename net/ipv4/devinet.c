@@ -778,8 +778,13 @@ u32 inet_select_addr(const struct net_device *dev, u32 dst, int scope)
 		goto no_in_dev;
 
 	for_primary_ifa(in_dev) {
+		// Here we want to use an address that's more general.
+		// Namely, we want an address with samller scope.
+		// The larger the scope, the norrower the address.
+		// RT_SCOPE_UNIVERSE < RT_SCOPE_LINK < RT_SCOPE_HOST
 		if (ifa->ifa_scope > scope)
 			continue;
+		
 		if (!dst || inet_ifa_match(dst, ifa)) {
 			addr = ifa->ifa_local;
 			break;

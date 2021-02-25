@@ -1105,6 +1105,9 @@ static void neigh_hh_init(struct neighbour *n, struct dst_entry *dst,
 			hh->hh_next = n->hh;
 			n->hh	    = hh;
 			if (n->nud_state & NUD_CONNECTED)
+				// hh_ouput can be set to dev_queue_xmit, which doesn't 
+				// populate L2 header (ip_finish_output2 would copy the 
+				// header into sk_buff if dst->hh is defined);
 				hh->hh_output = n->ops->hh_output;
 			else
 				hh->hh_output = n->ops->output;

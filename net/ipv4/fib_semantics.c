@@ -848,13 +848,14 @@ int fib_semantic_match(struct list_head *head, const struct flowi *flp,
 		    fa->fa_tos != flp->fl4_tos)
 			continue;
 
-		// We need a route with a narrower scope than the one specified with the search key
+		// We need a route with a narrower scope than the one specified in flowi.
 		// RT_SCOPE_UNIVERSE=0, ..., RT_SCOPE_LINK=253, RT_SCOPE_HOST=254
 		// The larger the scope is, the narrower it is.
 		if (fa->fa_scope < flp->fl4_scope)
 			continue;
 
-		// this flag will be taken into account to decide whether the cache should be flushed
+		// this flag will be taken into account to decide whether the cache 
+		// should be flushed
 		fa->fa_state |= FA_S_ACCESSED;
 
 		err = fib_props[fa->fa_type].error;

@@ -1592,6 +1592,7 @@ static int ip_route_input_slow(struct sk_buff *skb, u32 daddr, u32 saddr,
 	if (ZERONET(saddr))
 		goto martian_source;
 
+	// Why daddr can not be LOOPBACK ? See comment of this function.
 	if (BADCLASS(daddr) || ZERONET(daddr) || LOOPBACK(daddr))
 		goto martian_destination;
 
@@ -1691,6 +1692,7 @@ static int ip_route_input_slow(struct sk_buff *skb, u32 daddr, u32 saddr,
 	rth->u.dst.input = ip_forward;
 	rth->u.dst.output = ip_output;
 
+	// Here we could override rth->rt_gateway if the gateway as next hop.
 	rt_set_nexthop(rth, &res, itag);
 
 	rth->rt_flags = flags;

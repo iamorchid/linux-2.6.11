@@ -38,57 +38,92 @@
 
 static struct
 {
-	struct ipt_replace repl;
-	struct ipt_standard entries[3];
-	struct ipt_error term;
-} nat_initial_table __initdata
-= { { "nat", NAT_VALID_HOOKS, 4,
-      sizeof(struct ipt_standard) * 3 + sizeof(struct ipt_error),
-      { [NF_IP_PRE_ROUTING] = 0,
-	[NF_IP_POST_ROUTING] = sizeof(struct ipt_standard),
-	[NF_IP_LOCAL_OUT] = sizeof(struct ipt_standard) * 2 },
-      { [NF_IP_PRE_ROUTING] = 0,
-	[NF_IP_POST_ROUTING] = sizeof(struct ipt_standard),
-	[NF_IP_LOCAL_OUT] = sizeof(struct ipt_standard) * 2 },
-      0, NULL, { } },
-    {
-	    /* PRE_ROUTING */
-	    { { { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
-		0,
-		sizeof(struct ipt_entry),
-		sizeof(struct ipt_standard),
-		0, { 0, 0 }, { } },
-	      { { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } },
-		-NF_ACCEPT - 1 } },
-	    /* POST_ROUTING */
-	    { { { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
-		0,
-		sizeof(struct ipt_entry),
-		sizeof(struct ipt_standard),
-		0, { 0, 0 }, { } },
-	      { { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } },
-		-NF_ACCEPT - 1 } },
-	    /* LOCAL_OUT */
-	    { { { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
-		0,
-		sizeof(struct ipt_entry),
-		sizeof(struct ipt_standard),
-		0, { 0, 0 }, { } },
-	      { { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } },
-		-NF_ACCEPT - 1 } }
+  struct ipt_replace repl;
+  struct ipt_standard entries[3];
+  struct ipt_error term;
+} nat_initial_table __initdata = { 
+  { 
+    "nat", NAT_VALID_HOOKS, 4, 
+    sizeof(struct ipt_standard) * 3 + sizeof(struct ipt_error),
+    { 
+      [NF_IP_PRE_ROUTING] = 0,
+      [NF_IP_POST_ROUTING] = sizeof(struct ipt_standard),
+      [NF_IP_LOCAL_OUT] = sizeof(struct ipt_standard) * 2 
     },
-    /* ERROR */
-    { { { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
-	0,
-	sizeof(struct ipt_entry),
-	sizeof(struct ipt_error),
-	0, { 0, 0 }, { } },
-      { { { { IPT_ALIGN(sizeof(struct ipt_error_target)), IPT_ERROR_TARGET } },
-	  { } },
-	"ERROR"
-      }
+    { 
+      [NF_IP_PRE_ROUTING] = 0,
+      [NF_IP_POST_ROUTING] = sizeof(struct ipt_standard),
+      [NF_IP_LOCAL_OUT] = sizeof(struct ipt_standard) * 2
+    },
+    0, NULL, { }
+  },
+  {
+    /* PRE_ROUTING */
+    // struct ipt_standard
+    { 
+      // struct ipt_entry
+      { 
+        { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 }, // struct ipt_ip
+        0,
+        sizeof(struct ipt_entry),    // target_offset
+        sizeof(struct ipt_standard), // next_offset
+        0, { 0, 0 }, { } 
+      },
+      // struct ipt_standard_target
+      { 
+        { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } }, // target
+        -NF_ACCEPT - 1  // verdict
+      } 
+    },
+    /* POST_ROUTING */
+    { 
+      { 
+        { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
+        0,
+        sizeof(struct ipt_entry),
+        sizeof(struct ipt_standard),
+        0, { 0, 0 }, { } 
+      },
+      { 
+        { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } },
+        -NF_ACCEPT - 1 
+      } 
+    },
+    /* LOCAL_OUT */
+    { 
+      { 
+        { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
+        0,
+        sizeof(struct ipt_entry),
+        sizeof(struct ipt_standard),
+        0, { 0, 0 }, { } 
+      },
+      { 
+        { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } },
+        -NF_ACCEPT - 1 
+      } 
     }
+  },
+  /* ERROR */
+  // struct ipt_error
+  { 
+    // struct ipt_entry
+    { 
+      { { 0 }, { 0 }, { 0 }, { 0 }, "", "", { 0 }, { 0 }, 0, 0, 0 },
+      0,
+      sizeof(struct ipt_entry),
+      sizeof(struct ipt_error),
+      0, { 0, 0 }, { } 
+    },
+    // struct ipt_error_target
+    { 
+      { { { IPT_ALIGN(sizeof(struct ipt_error_target)), IPT_ERROR_TARGET } }, { } },
+      "ERROR"
+    }
+  }
 };
+
+
 
 static struct ipt_table nat_table = {
 	.name		= "nat",

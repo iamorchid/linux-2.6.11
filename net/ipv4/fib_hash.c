@@ -311,6 +311,8 @@ fn_hash_select_default(struct fib_table *tb, const struct flowi *flp, struct fib
 			fa->fa_state |= FA_S_ACCESSED;
 
 			if (fi == NULL) {
+				// res->fi is used as the start point. So the result before this 
+				// is ignored here.
 				if (next_fi != res->fi)
 					break;
 			} else if (!fib_detect_death(fi, order, &last_resort,

@@ -17,6 +17,8 @@ enum ip_conntrack_info
 	IP_CT_NEW,
 
 	/* >= this indicates reply direction */
+	// We define the IS_REPLY just from connection init perspective, not 
+	// from business data exchange perspective.
 	IP_CT_IS_REPLY,
 
 	/* Number of distinct IP_CT types (no NEW in reply dirn). */

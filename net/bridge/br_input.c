@@ -121,7 +121,6 @@ int br_handle_frame(struct net_bridge_port *p, struct sk_buff **pskb)
 			return 1;
 		}
 	}
-
 	else if (p->state == BR_STATE_FORWARDING) {
 		if (br_should_route_hook) {
 			if (br_should_route_hook(pskb)) 

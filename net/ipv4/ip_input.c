@@ -210,8 +210,8 @@ static inline int ip_local_deliver_finish(struct sk_buff *skb)
            hold ip_conntrack module loaded indefinitely. */
 	nf_reset(skb);
 
-        /* Point into the IP datagram, just past the header. */
-        skb->h.raw = skb->data;
+	/* Point into the IP datagram, just past the header. */
+	skb->h.raw = skb->data;
 
 	rcu_read_lock();
 	{

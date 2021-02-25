@@ -119,6 +119,9 @@ static inline int ip_ct_tuple_src_equal(const struct ip_conntrack_tuple *t1,
 static inline int ip_ct_tuple_dst_equal(const struct ip_conntrack_tuple *t1,
 				        const struct ip_conntrack_tuple *t2)
 {
+	// Note that we don't compare direction here. This makes sense as for 
+	// the newly created tuple, we always initialize its direction to 
+	// IP_CT_DIR_ORIGINAL. However, the direction may not be correct.
 	return t1->dst.ip == t2->dst.ip
 		&& t1->dst.u.all == t2->dst.u.all
 		&& t1->dst.protonum == t2->dst.protonum;
