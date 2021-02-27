@@ -93,11 +93,11 @@ static struct
 	},	/* RTN_UNSPEC */
 	{
 		.error	= 0,
-		// For RTN_UNICAST, its route scope can correspond to both RT_SCOPE_LINK and 
-		// RT_SCOPE_UNIVERSE depending on the dst address. For address in local network, 
-		// the route scope would be RT_SCOPE_LINK (see how RT_SCOPE_LINK and fib_magic 
-		// handle RTN_UNICAST). Otherwise, it would be RT_SCOPE_UNIVERSE (see how it's 
-		// set in fib_convert_rtentry).
+		// For RTN_UNICAST, its route scope can correspond to both RT_SCOPE_LINK 
+		// and RT_SCOPE_UNIVERSE depending on the dst address. For address in 
+		// local network, the route scope would be RT_SCOPE_LINK (see how fib_magic 
+		// handles RTN_UNICAST). Otherwise, it would be RT_SCOPE_UNIVERSE (see 
+		// how it's set in fib_convert_rtentry).
 		.scope	= RT_SCOPE_UNIVERSE,
 	},	/* RTN_UNICAST */
 	{
@@ -505,6 +505,7 @@ static int fib_check_nh(const struct rtmsg *r, struct fib_info *fi, struct fib_n
 		if (nh->nh_flags&RTNH_F_ONLINK) {
 			struct net_device *dev;
 
+			// the route scope MUST be wider than RT_SCOPE_LINK
 			if (r->rtm_scope >= RT_SCOPE_LINK)
 				return -EINVAL;
 			if (inet_addr_type(nh->nh_gw) != RTN_UNICAST)
@@ -518,18 +519,34 @@ static int fib_check_nh(const struct rtmsg *r, struct fib_info *fi, struct fib_n
 			nh->nh_scope = RT_SCOPE_LINK;
 			return 0;
 		}
+
+		// Note that gateway can also be local interface address 
+		// (not just other host address).
+		// ip route add 10.0.1.0/24 via 192.168.1.111
 		{
-			struct flowi fl = { .nl_u = { .ip4_u =
-						      { .daddr = nh->nh_gw,
-							.scope = r->rtm_scope + 1 } },
-					    .oif = nh->nh_oif };
+            struct flowi fl = { 
+                .nl_u = { 
+                    .ip4_u = { 
+                        .daddr = nh->nh_gw,
+						// We want to find a route to next hop with narrower scope
+                        .scope = r->rtm_scope + 1 
+                    } 
+                },
+				.oif = nh->nh_oif 
+            };
 
 			/* It is not necessary, but requires a bit of thinking */
 			if (fl.fl4_scope < RT_SCOPE_LINK)
+				// relax the scope requirment (namely to next hop we need a 
+				// route whose scope is not wider than RT_SCOPE_LINK). So we 
+				// allow the scope to be RT_SCOPE_LINK or RT_SCOPE_HOST for 
+				// the route to the next hop. --Will
 				fl.fl4_scope = RT_SCOPE_LINK;
+
 			if ((err = fib_lookup(&fl, &res)) != 0)
 				return err;
 		}
+		
 		err = -EINVAL;
 		if (res.type != RTN_UNICAST && res.type != RTN_LOCAL)
 			goto out;
@@ -656,6 +673,8 @@ fib_create_info(const struct rtmsg *r, struct kern_rta *rta,
 #endif
 
 	/* Fast check to catch the most weird cases */
+	// fib_props defines the widest scope allowed for specific route type.
+	// The smaller the scope's value, the wider it means.
 	if (fib_props[r->rtm_type].scope > r->rtm_scope)
 		goto err_inval;
 
@@ -770,6 +789,7 @@ fib_create_info(const struct rtmsg *r, struct kern_rta *rta,
 		struct fib_nh *nh = fi->fib_nh;
 
 		/* Local address is added. */
+		// ip addr add dev eth0 192.168.1.100
 		if (nhs != 1 || nh->nh_gw)
 			goto err_inval;
 		nh->nh_scope = RT_SCOPE_NOWHERE;

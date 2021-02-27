@@ -634,28 +634,12 @@ unsigned int ip_conntrack_in(unsigned int hooknum,
 	/* FIXME: Do this right please. --RR */
 	(*pskb)->nfcache |= NFC_UNKNOWN;
 
-/* Doesn't cover locally-generated broadcast, so not worth it. */
-#if 0
-	/* Ignore broadcast: no `connection'. */
-	if ((*pskb)->pkt_type == PACKET_BROADCAST) {
-		printk("Broadcast packet!\n");
-		return NF_ACCEPT;
-	} else if (((*pskb)->nh.iph->daddr & htonl(0x000000FF)) 
-		   == htonl(0x000000FF)) {
-		printk("Should bcast: %u.%u.%u.%u->%u.%u.%u.%u (sk=%p, ptype=%u)\n",
-		       NIPQUAD((*pskb)->nh.iph->saddr),
-		       NIPQUAD((*pskb)->nh.iph->daddr),
-		       (*pskb)->sk, (*pskb)->pkt_type);
-	}
-#endif
-
 	proto = ip_ct_find_proto((*pskb)->nh.iph->protocol);
 
 	/* It may be an special packet, error, unclean...
 	 * inverse of the return code tells to the netfilter
 	 * core what to do with the packet. */
-	if (proto->error != NULL 
-	    && (ret = proto->error(*pskb, &ctinfo, hooknum)) <= 0) {
+	if (proto->error != NULL && (ret = proto->error(*pskb, &ctinfo, hooknum)) <= 0) {
 		CONNTRACK_STAT_INC(error);
 		CONNTRACK_STAT_INC(invalid);
 		return -ret;

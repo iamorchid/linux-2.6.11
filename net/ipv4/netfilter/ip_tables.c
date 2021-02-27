@@ -644,6 +644,7 @@ mark_source_chains(struct ipt_table_info *newinfo, unsigned int valid_hooks)
 					   IPT_STANDARD_TARGET) == 0
 				    && newpos >= 0) {
 					/* This a jump; chase it. */
+					// jump to chain defined by user
 					duprintf("Jump rule %u -> %u\n",
 						 pos, newpos);
 				} else {

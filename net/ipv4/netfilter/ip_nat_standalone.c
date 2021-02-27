@@ -167,6 +167,7 @@ ip_nat_in(unsigned int hooknum,
 	    && ((*pskb)->nh.iph->saddr != saddr
 	        || (*pskb)->nh.iph->daddr != daddr)) {
 		dst_release((*pskb)->dst);
+		// force performing reouting again
 		(*pskb)->dst = NULL;
 	}
 	return ret;

@@ -320,15 +320,23 @@ int ip_queue_xmit(struct sk_buff *skb, int ipfragok)
 			daddr = opt->faddr;
 
 		{
-			struct flowi fl = { .oif = sk->sk_bound_dev_if,
-					    .nl_u = { .ip4_u =
-						      { .daddr = daddr,
-							.saddr = inet->saddr,
-							.tos = RT_CONN_FLAGS(sk) } },
-					    .proto = sk->sk_protocol,
-					    .uli_u = { .ports =
-						       { .sport = inet->sport,
-							 .dport = inet->dport } } };
+            struct flowi fl = { 
+                .oif = sk->sk_bound_dev_if,
+                .nl_u = { 
+                    .ip4_u = { 
+                        .daddr = daddr,
+                        .saddr = inet->saddr,
+                        .tos = RT_CONN_FLAGS(sk) 
+                    } 
+                },
+                .proto = sk->sk_protocol,
+                .uli_u = { 
+                    .ports = { 
+                        .sport = inet->sport,
+                        .dport = inet->dport 
+                    } 
+                } 
+            };
 
 			/* If this fails, retransmit mechanism of transport layer will
 			 * keep trying until route appears or the connection times

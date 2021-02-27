@@ -71,7 +71,7 @@ static struct
       },
       // struct ipt_standard_target
       { 
-        { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } }, // target
+        { { { IPT_ALIGN(sizeof(struct ipt_standard_target)), "" } }, { } }, // struct ipt_entry_target
         -NF_ACCEPT - 1  // verdict
       } 
     },

@@ -1891,19 +1891,23 @@ int ip_route_input(struct sk_buff *skb, u32 daddr, u32 saddr,
 static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 {
 	u32 tos	= oldflp->fl4_tos & (IPTOS_RT_MASK | RTO_ONLINK);
-	struct flowi fl = { .nl_u = { .ip4_u =
-				      { .daddr = oldflp->fl4_dst,
-					.saddr = oldflp->fl4_src,
-					.tos = tos & IPTOS_RT_MASK,
-					.scope = ((tos & RTO_ONLINK) ?
+	struct flowi fl = { 
+		.nl_u = { 
+			.ip4_u = { 
+				.daddr = oldflp->fl4_dst,
+				.saddr = oldflp->fl4_src,
+				.tos = tos & IPTOS_RT_MASK,
+				.scope = ((tos & RTO_ONLINK) ?
 						  RT_SCOPE_LINK :
 						  RT_SCOPE_UNIVERSE),
 #ifdef CONFIG_IP_ROUTE_FWMARK
-					.fwmark = oldflp->fl4_fwmark
+				.fwmark = oldflp->fl4_fwmark
 #endif
-				      } },
-			    .iif = loopback_dev.ifindex,
-			    .oif = oldflp->oif };
+			} 
+		},
+		.iif = loopback_dev.ifindex,
+		.oif = oldflp->oif 
+	};
 	struct fib_result res;
 	unsigned flags = 0;
 	struct rtable *rth;
@@ -1918,6 +1922,9 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 	res.r		= NULL;
 #endif
 
+	// if src address is provided, we need to check that it's a valid 
+	// local address. Otherwise, src address would auto populate later.
+	// --Will
 	if (oldflp->fl4_src) {
 		err = -EINVAL;
 		if (MULTICAST(oldflp->fl4_src) ||
@@ -1962,6 +1969,10 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 			dev_put(dev_out);
 		dev_out = NULL;
 	}
+
+	// Though oldflp->oif would serve as one of the conditions used in 
+	// fib_lookup, for LOCAL_MCAST and BROADCAST, we don't need to do 
+	// fib_lookup when oif is provided. -- Will
 	if (oldflp->oif) {
 		dev_out = dev_get_by_index(oldflp->oif);
 		err = -ENODEV;
@@ -1988,6 +1999,9 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 		}
 	}
 
+	// If dst address is not specified, it means that the packet would be 
+	// sent to localhost. And here we ignore oif (even it's set) and always 
+	// use looback device. --Will
 	if (!fl.fl4_dst) {
 		fl.fl4_dst = fl.fl4_src;
 		if (!fl.fl4_dst)
@@ -2036,6 +2050,9 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 	}
 	free_res = 1;
 
+	// If packet is accepted locally (namely the dst address 
+	// is one of our local interface addresses), we also use 
+	// loopback address here. --Will
 	if (res.type == RTN_LOCAL) {
 		if (!fl.fl4_src)
 			fl.fl4_src = fl.fl4_dst;
@@ -2056,7 +2073,7 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 		fib_select_multipath(&fl, &res);
 	else
 #endif
-	if (!res.prefixlen && res.type == RTN_UNICAST && !fl.oif)
+	if (!res.prefixlen && res.type == RTN_UNICAST && fl.oif == 0)
 		fib_select_default(&fl, &res);
 
 	if (!fl.fl4_src)
@@ -2069,6 +2086,9 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 	fl.oif = dev_out->ifindex;
 
 make_route:
+	// If src address is loopback address but dst address is not 
+	// local interface address, this is definite wrong (loopback 
+	// address should only be used locally). --Will
 	if (LOOPBACK(fl.fl4_src) && !(dev_out->flags&IFF_LOOPBACK))
 		goto e_inval;
 
@@ -2111,11 +2131,13 @@ make_route:
 		goto e_nobufs;
 
 	atomic_set(&rth->u.dst.__refcnt, 1);
-	rth->u.dst.flags= DST_HOST;
+	rth->u.dst.flags = DST_HOST;
 	if (in_dev->cnf.no_xfrm)
 		rth->u.dst.flags |= DST_NOXFRM;
 	if (in_dev->cnf.no_policy)
 		rth->u.dst.flags |= DST_NOPOLICY;
+
+	// initialize cache lookup fields
 	rth->fl.fl4_dst	= oldflp->fl4_dst;
 	rth->fl.fl4_tos	= tos;
 	rth->fl.fl4_src	= oldflp->fl4_src;
@@ -2123,16 +2145,18 @@ make_route:
 #ifdef CONFIG_IP_ROUTE_FWMARK
 	rth->fl.fl4_fwmark= oldflp->fl4_fwmark;
 #endif
+
 	rth->rt_dst	= fl.fl4_dst;
 	rth->rt_src	= fl.fl4_src;
 	rth->rt_iif	= oldflp->oif ? : dev_out->ifindex;
 	rth->u.dst.dev	= dev_out;
 	dev_hold(dev_out);
 	rth->idev	= in_dev_get(dev_out);
+	// this could be overriden by rt_set_nexthop
 	rth->rt_gateway = fl.fl4_dst;
 	rth->rt_spec_dst= fl.fl4_src;
 
-	rth->u.dst.output=ip_output;
+	rth->u.dst.output = ip_output;
 
 	RT_CACHE_STAT_INC(out_slow_tot);
 
@@ -2159,7 +2183,6 @@ make_route:
 
 	rt_set_nexthop(rth, &res, 0);
 	
-
 	rth->rt_flags = flags;
 
 	hash = rt_hash_code(oldflp->fl4_dst, oldflp->fl4_src ^ (oldflp->oif << 5), tos);
