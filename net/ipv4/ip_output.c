@@ -169,6 +169,7 @@ int ip_build_and_send_pkt(struct sk_buff *skb, struct sock *sk,
 		       dst_output);
 }
 
+// Currently, skb-data points to L3 header
 static inline int ip_finish_output2(struct sk_buff *skb)
 {
 	struct dst_entry *dst = skb->dst;
@@ -466,7 +467,7 @@ int ip_fragment(struct sk_buff *skb, int (*output)(struct sk_buff*))
 	 */
 
 	hlen = iph->ihl * 4;
-	mtu = dst_pmtu(&rt->u.dst) - hlen;	/* Size of data space */
+	mtu = dst_pmtu(&rt->u.dst) - hlen;	/* Size of L4 data space */
 
 	/* When frag_list is given, use it. First, check its validity:
 	 * some transformers could create wrong frag_list or break existing
@@ -733,6 +734,9 @@ int ip_append_data(struct sock *sk,
 	int err;
 	int offset = 0;
 	unsigned int maxfraglen, fragheaderlen;
+
+	// CHECKSUM_NONE indicates that hardware should not compute the 
+	// L4 checksum for us.
 	int csummode = CHECKSUM_NONE;
 
 	if (flags&MSG_PROBE)
@@ -775,6 +779,11 @@ int ip_append_data(struct sock *sk,
 	hh_len = LL_RESERVED_SPACE(rt->u.dst.dev);
 
 	fragheaderlen = sizeof(struct iphdr) + (opt ? opt->optlen : 0);
+	
+	// In ip header, we use 13 bits to indicate the L4 data offset for each ip 
+	// frag. As the total length of an original un-fragmented ip packet uses 
+	// 16 bits (including both ip header and L4 data). So the L4 data length 
+	// in each non-final frag MUST be aligned at 8 bytes. --Will
 	maxfraglen = ((mtu - fragheaderlen) & ~7) + fragheaderlen;
 
 	if (inet->cork.length + length > 0xFFFF - fragheaderlen) {
@@ -790,6 +799,9 @@ int ip_append_data(struct sock *sk,
 	    length + fragheaderlen <= mtu &&
 	    rt->u.dst.dev->features&(NETIF_F_IP_CSUM|NETIF_F_NO_CSUM|NETIF_F_HW_CSUM) &&
 	    !exthdrlen)
+	    // If we have more than 1 fragments acutally (we know this later if more data 
+	    // is added), we would re-compute the checksum for the first fragment. Just 
+	    // refer to udp_push_pending_frames. --Will
 		csummode = CHECKSUM_HW;
 
 	inet->cork.length += length;
@@ -808,6 +820,11 @@ int ip_append_data(struct sock *sk,
 		/* Check if the remaining data fits into current packet. */
 		copy = mtu - skb->len;
 		if (copy < length)
+			// We can't place the new data into current last frag. And only last 
+			// frag length can reach mtu (non-last one can only reach maxfraglen).
+			// So if maxfraglen - skb->len is less than 0, which means we have to 
+			// move some bytes from previous last frag to new last frag we would 
+			// add soon. --Will
 			copy = maxfraglen - skb->len;
 		if (copy <= 0) {
 			char *data;
@@ -1137,8 +1154,13 @@ int ip_push_pending_frames(struct sock *sk)
 	/* move skb->data to ip header from ext header */
 	if (skb->data < skb->nh.raw)
 		__skb_pull(skb, skb->nh.raw - skb->data);
+
 	while ((tmp_skb = __skb_dequeue(&sk->sk_write_queue)) != NULL) {
+		// For non-first fragment, move skb->data to L4 reader. So 
+		// tmp_skb->len won't include the length of IP header (but 
+		// skb->len includes that). --Will
 		__skb_pull(tmp_skb, skb->h.raw - skb->nh.raw);
+
 		*tail_skb = tmp_skb;
 		tail_skb = &(tmp_skb->next);
 		skb->len += tmp_skb->len;

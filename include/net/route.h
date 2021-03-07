@@ -64,7 +64,7 @@ struct rtable
 	__u32			rt_src;	/* Path source		*/
 	int			rt_iif;
 
-	/* Info on neighbour */
+	/* Info on neighbour (see how arp_bind_neighbour uses it) */
 	__u32			rt_gateway;
 
 	/* Cache lookup keys */

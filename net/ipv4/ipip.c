@@ -787,7 +787,10 @@ static void ipip_tunnel_setup(struct net_device *dev)
 
 	dev->type		= ARPHRD_TUNNEL;
 	dev->hard_header_len 	= LL_MAX_HEADER + sizeof(struct iphdr);
+	// We need to add our layer of ip header.
 	dev->mtu		= 1500 - sizeof(struct iphdr);
+	// See how this is used in arp_constructor. For this virtual 
+	// device, no arp is needed (just like loopback dev). --Will
 	dev->flags		= IFF_NOARP;
 	dev->iflink		= 0;
 	dev->addr_len		= 4;

@@ -291,6 +291,11 @@ static inline int ip_rcv_finish(struct sk_buff *skb)
 	 *	Initialise the virtual path cache for the packet. It describes
 	 *	how the packet travels inside Linux networking.
 	 */ 
+	// When skb->dst is not null, we can be sure that this packet is from 
+	// our local host. As when a packet is from our local host, the packet 
+	// would be loop'ed back to here. And skb->dst would be initialized (
+	// skb->dst->input would be set to ip_local_deliver during output routing
+	// process in ip_route_output_slow). --Will
 	if (skb->dst == NULL) {
 		if (ip_route_input(skb, iph->daddr, iph->saddr, iph->tos, dev))
 			goto drop; 

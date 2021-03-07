@@ -441,6 +441,8 @@ static void ip_frag_queue(struct ipq *qp, struct sk_buff *skb)
 		qp->len = end;
 	} else {
 		if (end&7) {
+			// This should not happen normally as ip_rcv would trim the 
+			// buffer padded by transport medium. --Will
 			end &= ~7;
 			if (skb->ip_summed != CHECKSUM_UNNECESSARY)
 				skb->ip_summed = CHECKSUM_NONE;
@@ -455,9 +457,10 @@ static void ip_frag_queue(struct ipq *qp, struct sk_buff *skb)
 	if (end == offset)
 		goto err;
 
+	// move the skb->data to skip ip header and point to L4 header
 	if (pskb_pull(skb, ihl) == NULL)
 		goto err;
-	if (pskb_trim(skb, end-offset))
+	if (pskb_trim(skb, end - offset))
 		goto err;
 
 	/* Find out which fragments are in front and at the back of us
@@ -599,10 +602,13 @@ static struct sk_buff *ip_frag_reasm(struct ipq *qp, struct net_device *dev)
 	}
 
 	skb_shinfo(head)->frag_list = head->next;
+	// include ip header in the head skb
 	skb_push(head, head->data - head->nh.raw);
 	atomic_sub(head->truesize, &ip_frag_mem);
 
 	for (fp=head->next; fp; fp = fp->next) {
+		// fp->len is length of ip payload (namely including 
+		// the length of ip header).
 		head->data_len += fp->len;
 		head->len += fp->len;
 		if (head->ip_summed != fp->ip_summed)

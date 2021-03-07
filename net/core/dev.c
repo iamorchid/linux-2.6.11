@@ -1692,6 +1692,7 @@ ncls:
 	if (handle_bridge(&skb, &pt_prev, &ret))
 		goto out;
 
+	// L3 protocol (IP, ARG, ...)
 	type = skb->protocol;
 	list_for_each_entry_rcu(ptype, &ptype_base[ntohs(type)&15], list) {
 		if (ptype->type == type &&
@@ -1718,11 +1719,11 @@ out:
 }
 
 /**
- * budget is the max number of packets that net_rx_action can handle in one round  for 
- * all devices. The field weight in struct net_device is the number of packets  that a 
+ * budget is the max number of packets that net_rx_action can handle in one round for 
+ * all devices. The field weight in struct net_device is the number of packets that a 
  * device can handle continuously before it offers the chance to other device. The quota 
  * field in struct net_device is used to record how much weight have been not used since 
- * last processing (it would be re-initialized using weight if it's <= 0).
+ * last processing (it would be re-initialized using weight if it's <= 0). --Will
  */
 static int process_backlog(struct net_device *backlog_dev, int *budget)
 {

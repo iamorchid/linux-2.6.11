@@ -134,7 +134,8 @@ struct neighbour
 	atomic_t		probes;
 	rwlock_t		lock;
 
-	// This is initialized by arp_process through neigh_update
+	// This is initialized by arp_process through neigh_update.
+	// --Will
 	unsigned char		ha[(MAX_ADDR_LEN+sizeof(unsigned long)-1)&~(sizeof(unsigned long)-1)];
 	
 	// For a neighbour, hard harder cache here is a list. In the L2 header (such as eth header), 

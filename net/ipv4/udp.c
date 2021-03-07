@@ -429,10 +429,16 @@ static int udp_push_pending_frames(struct sock *sk, struct udp_sock *up)
 		 * Only one fragment on the socket.
 		 */
 		if (skb->ip_summed == CHECKSUM_HW) {
+			// hardwire would compute L4 csum for us. Here we just need 
+			// set the position where hardware writes the final check sum 
+			// and prepre the check sum of psudo IP header (hardwire won't
+			// include psudo IP header). --Will
 			skb->csum = offsetof(struct udphdr, check);
 			uh->check = ~csum_tcpudp_magic(fl->fl4_src, fl->fl4_dst,
 					up->len, IPPROTO_UDP, 0);
 		} else {
+			// Currently, skb->csum is only based on L4 payload. Here 
+			// we include L4 header and psudo IP header. --Will
 			skb->csum = csum_partial((char *)uh,
 					sizeof(struct udphdr), skb->csum);
 			uh->check = csum_tcpudp_magic(fl->fl4_src, fl->fl4_dst,

@@ -1551,16 +1551,20 @@ static int ip_route_input_slow(struct sk_buff *skb, u32 daddr, u32 saddr,
 	struct fib_result res;
 	struct in_device *in_dev = in_dev_get(dev);
 	struct in_device *out_dev = NULL;
-	struct flowi fl = { .nl_u = { .ip4_u =
-				      { .daddr = daddr,
-					.saddr = saddr,
-					.tos = tos,
-					.scope = RT_SCOPE_UNIVERSE,
+	struct flowi fl = { 
+		.nl_u = { 
+			.ip4_u = { 
+				.daddr = daddr,
+				.saddr = saddr,
+				.tos = tos,
+				.scope = RT_SCOPE_UNIVERSE,
 #ifdef CONFIG_IP_ROUTE_FWMARK
-					.fwmark = skb->nfmark
+				.fwmark = skb->nfmark
 #endif
-				      } },
-			    .iif = dev->ifindex };
+			} 
+		},
+		.iif = dev->ifindex 
+	};
 	unsigned	flags = 0;
 	u32		itag = 0;
 	struct rtable * rth;
@@ -1672,22 +1676,25 @@ static int ip_route_input_slow(struct sk_buff *skb, u32 daddr, u32 saddr,
 		rth->u.dst.flags |= DST_NOPOLICY;
 	if (in_dev->cnf.no_xfrm)
 		rth->u.dst.flags |= DST_NOXFRM;
+
+	// initialize cache lookup fields
+	rth->fl.fl4_src	= saddr;
 	rth->fl.fl4_dst	= daddr;
-	rth->rt_dst	= daddr;
 	rth->fl.fl4_tos	= tos;
 #ifdef CONFIG_IP_ROUTE_FWMARK
 	rth->fl.fl4_fwmark= skb->nfmark;
 #endif
-	rth->fl.fl4_src	= saddr;
+	rth->fl.iif = dev->ifindex;
+	rth->fl.oif 	= 0;
+
 	rth->rt_src	= saddr;
+	rth->rt_dst	= daddr;
 	rth->rt_gateway	= daddr;
-	rth->rt_iif 	=
-	rth->fl.iif	= dev->ifindex;
+	rth->rt_spec_dst= spec_dst;
+ 	rth->rt_iif 	= dev->ifindex;
 	rth->u.dst.dev	= out_dev->dev;
 	dev_hold(rth->u.dst.dev);
 	rth->idev	= in_dev_get(rth->u.dst.dev);
-	rth->fl.oif 	= 0;
-	rth->rt_spec_dst= spec_dst;
 
 	rth->u.dst.input = ip_forward;
 	rth->u.dst.output = ip_output;
@@ -1730,31 +1737,35 @@ local_input:
 	if (!rth)
 		goto e_nobufs;
 
-	rth->u.dst.output= ip_rt_bug;
-
 	atomic_set(&rth->u.dst.__refcnt, 1);
 	rth->u.dst.flags= DST_HOST;
 	if (in_dev->cnf.no_policy)
 		rth->u.dst.flags |= DST_NOPOLICY;
+
+	rth->fl.fl4_src	= saddr;
 	rth->fl.fl4_dst	= daddr;
-	rth->rt_dst	= daddr;
 	rth->fl.fl4_tos	= tos;
 #ifdef CONFIG_IP_ROUTE_FWMARK
 	rth->fl.fl4_fwmark= skb->nfmark;
 #endif
-	rth->fl.fl4_src	= saddr;
-	rth->rt_src	= saddr;
-#ifdef CONFIG_NET_CLS_ROUTE
-	rth->u.dst.tclassid = itag;
-#endif
-	rth->rt_iif	=
 	rth->fl.iif	= dev->ifindex;
-	rth->u.dst.dev	= &loopback_dev;
-	dev_hold(rth->u.dst.dev);
-	rth->idev	= in_dev_get(rth->u.dst.dev);
+
+#ifdef CONFIG_NET_CLS_ROUTE
+		rth->u.dst.tclassid = itag;
+#endif
+
+	rth->rt_src	= saddr;
+	rth->rt_dst	= daddr;
 	rth->rt_gateway	= daddr;
 	rth->rt_spec_dst= spec_dst;
+ 	rth->rt_iif	= dev->ifindex;
+	rth->u.dst.dev = &loopback_dev;
+	dev_hold(rth->u.dst.dev);
+	rth->idev	= in_dev_get(rth->u.dst.dev);
+	
 	rth->u.dst.input= ip_local_deliver;
+	rth->u.dst.output = ip_rt_bug;
+
 	rth->rt_flags 	= flags|RTCF_LOCAL;
 	if (res.type == RTN_UNREACHABLE) {
 		rth->u.dst.input= ip_error;
@@ -2052,7 +2063,8 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 
 	// If packet is accepted locally (namely the dst address 
 	// is one of our local interface addresses), we also use 
-	// loopback address here. --Will
+	// loopback address here. Note that this logic has changed 
+	// in latest kernel version. --Will
 	if (res.type == RTN_LOCAL) {
 		if (!fl.fl4_src)
 			fl.fl4_src = fl.fl4_dst;
@@ -2086,9 +2098,10 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 	fl.oif = dev_out->ifindex;
 
 make_route:
-	// If src address is loopback address but dst address is not 
-	// local interface address, this is definite wrong (loopback 
-	// address should only be used locally). --Will
+	// If src address is loopback address but dst address is not local 
+	// interface address (when dst is local address, loopback device
+	// would be used), this is definite wrong (loopback address should 
+	// only be used locally). --Will
 	if (LOOPBACK(fl.fl4_src) && !(dev_out->flags&IFF_LOOPBACK))
 		goto e_inval;
 
@@ -2149,12 +2162,12 @@ make_route:
 	rth->rt_dst	= fl.fl4_dst;
 	rth->rt_src	= fl.fl4_src;
 	rth->rt_iif	= oldflp->oif ? : dev_out->ifindex;
-	rth->u.dst.dev	= dev_out;
+	rth->u.dst.dev = dev_out;
 	dev_hold(dev_out);
-	rth->idev	= in_dev_get(dev_out);
+	rth->idev = in_dev_get(dev_out);
 	// this could be overriden by rt_set_nexthop
 	rth->rt_gateway = fl.fl4_dst;
-	rth->rt_spec_dst= fl.fl4_src;
+	rth->rt_spec_dst = fl.fl4_src;
 
 	rth->u.dst.output = ip_output;
 

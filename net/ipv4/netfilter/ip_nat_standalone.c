@@ -166,8 +166,11 @@ ip_nat_in(unsigned int hooknum,
 	if (ret != NF_DROP && ret != NF_STOLEN
 	    && ((*pskb)->nh.iph->saddr != saddr
 	        || (*pskb)->nh.iph->daddr != daddr)) {
+		// (*pskb)->dst would be initialized during output routing 
+		// process if the packet originates from local host (namely 
+		// saddr and daddr are local interface addresses), it would 
+		// loop back to here.
 		dst_release((*pskb)->dst);
-		// force performing reouting again
 		(*pskb)->dst = NULL;
 	}
 	return ret;

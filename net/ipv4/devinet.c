@@ -295,6 +295,12 @@ static int inet_insert_ifa(struct in_ifaddr *ifa)
 	ifa->ifa_flags &= ~IFA_F_SECONDARY;
 	last_primary = &in_dev->ifa_list;
 
+	// sort in_ifaddr by ifa_scope desc (namely RT_SCOPE_HOST, RT_SCOPE_LINK, 
+	// and then RT_SCOPE_UNIVERSE) for primary address. In other words, the 
+	// narrower the ifa_scope, the smaller insert slot the in_ifaddr would use. 
+	// inet_select_addr would base on this to use an address whose scope is 
+	// not narrower than and most close to the requested one. 
+	// --Will
 	for (ifap = &in_dev->ifa_list; (ifa1 = *ifap) != NULL;
 	     ifap = &ifa1->ifa_next) {
 		if (!(ifa1->ifa_flags & IFA_F_SECONDARY) &&
@@ -314,6 +320,8 @@ static int inet_insert_ifa(struct in_ifaddr *ifa)
 		}
 	}
 
+	// Only primary address would be inserted using the above order, while 
+	// secondary address is always appended to tail.
 	if (!(ifa->ifa_flags & IFA_F_SECONDARY)) {
 		net_srandom(ifa->ifa_local);
 		ifap = last_primary;

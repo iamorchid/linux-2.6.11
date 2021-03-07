@@ -162,15 +162,23 @@ int fib_validate_source(u32 src, u32 dst, u8 tos, int oif,
 			struct net_device *dev, u32 *spec_dst, u32 *itag)
 {
 	struct in_device *in_dev;
-	struct flowi fl = { .nl_u = { .ip4_u =
-				      { .daddr = src,
-					.saddr = dst,
-					.tos = tos } },
-			    .iif = oif };
+    struct flowi fl = { 
+        .nl_u = { 
+            .ip4_u = { 
+                .daddr = src,
+                .saddr = dst,
+                .tos = tos 
+            } 
+        },
+        .iif = oif 
+    };
 	struct fib_result res;
 	int no_addr, rpf;
 	int ret;
 
+	// For explanation of rp_filter, see the following link:
+	// https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
+	// https://www.cnblogs.com/lipengxiang2009/p/7446388.html
 	no_addr = rpf = 0;
 	rcu_read_lock();
 	in_dev = __in_dev_get(dev);
@@ -185,16 +193,26 @@ int fib_validate_source(u32 src, u32 dst, u8 tos, int oif,
 
 	if (fib_lookup(&fl, &res))
 		goto last_resort;
+
+	// If the packet is from local host (src is a local interface 
+	// address), we won't get here as the skb->dst would be set 
+	// for the packet loop'ed back by loopback device. Namely, we 
+	// won't check the route at all. --Will
 	if (res.type != RTN_UNICAST)
 		goto e_inval_res;
+
 	*spec_dst = FIB_RES_PREFSRC(res);
 	fib_combine_itag(itag, &res);
 #ifdef CONFIG_IP_ROUTE_MULTIPATH
 	if (FIB_RES_DEV(res) == dev || res.fi->fib_nhs > 1)
 #else
+	// Check the BEST device we use to send packet to the dst is 
+	// the device from which we received the packet from dst.
 	if (FIB_RES_DEV(res) == dev)
 #endif
 	{
+		// if nh_scope >= RT_SCOPE_HOST, it means we can reach 
+		// the dst directly without gateway.
 		ret = FIB_RES_NH(res).nh_scope >= RT_SCOPE_HOST;
 		fib_res_put(&res);
 		return ret;
@@ -207,6 +225,9 @@ int fib_validate_source(u32 src, u32 dst, u8 tos, int oif,
 	fl.oif = dev->ifindex;
 
 	ret = 0;
+	// Check that if we can send out a packet to dst through the 
+	// device we received a packet (though the device is not the 
+	// BEST one according to our routes).
 	if (fib_lookup(&fl, &res) == 0) {
 		if (res.type == RTN_UNICAST) {
 			*spec_dst = FIB_RES_PREFSRC(res);

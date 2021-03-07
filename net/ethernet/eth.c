@@ -169,7 +169,7 @@ unsigned short eth_type_trans(struct sk_buff *skb, struct net_device *dev)
 	
 	if(*eth->h_dest&1)
 	{
-		if(memcmp(eth->h_dest, dev->broadcast, ETH_ALEN)==0)
+		if(memcmp(eth->h_dest, dev->broadcast, ETH_ALEN) == 0)
 			skb->pkt_type = PACKET_BROADCAST;
 		else
 			skb->pkt_type = PACKET_MULTICAST;
@@ -186,7 +186,7 @@ unsigned short eth_type_trans(struct sk_buff *skb, struct net_device *dev)
 	else if(1 /*dev->flags&IFF_PROMISC*/)
 	{
 		// By default, skb->pkt_type is 0 (PACKET_HOST), namely sent to us.
-		if(memcmp(eth->h_dest, dev->dev_addr, ETH_ALEN))
+		if(memcmp(eth->h_dest, dev->dev_addr, ETH_ALEN) != 0)
 			skb->pkt_type = PACKET_OTHERHOST;
 	}
 	
