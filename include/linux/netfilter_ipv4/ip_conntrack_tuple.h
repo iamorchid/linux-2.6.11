@@ -103,7 +103,6 @@ DEBUGP("tuple %p: %u %u.%u.%u.%u:%hu -> %u.%u.%u.%u:%hu\n",	\
 struct ip_conntrack_tuple_hash
 {
 	struct list_head list;
-
 	struct ip_conntrack_tuple tuple;
 };
 

@@ -239,6 +239,8 @@ struct sk_buff {
 				data_len,
 				mac_len,
 				csum;
+	// If this is set, it means local fragmentation is allowed 
+	// and DF flag can be ignored. --Will
 	unsigned char		local_df,
 				cloned,
 				pkt_type,

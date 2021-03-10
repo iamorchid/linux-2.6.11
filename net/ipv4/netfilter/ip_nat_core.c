@@ -294,6 +294,12 @@ ip_nat_setup_info(struct ip_conntrack *conntrack,
 
 	/* Place in source hash if this is the first time. */
 	if (have_to_hash) {
+		// Why we need to place conntrack into bysource ? --Will
+		// For the same src in original direction, it could connect to different 
+		// destinations and require SNAT. For this case, we don't need to use a 
+		// different NAT'ed source tuple for each destination. Rather we can re-use 
+		// the same NAT'ed source as long as destination + NAT'ed source combination 
+		// (namely reply tuple) is not yet occupied by other conntrack. --Will
 		unsigned int srchash
 			= hash_by_src(&conntrack->tuplehash[IP_CT_DIR_ORIGINAL]
 				      .tuple);
@@ -365,6 +371,13 @@ unsigned int nat_packet(struct ip_conntrack *ct,
 			return NF_DROP;
 	}
 
+	// The ct->status records what types of NAT translation needs to be 
+	// performed in terms of ORIGINAL direction. And statusbit tells 
+	// the NAT translation type we wnat to perform in current hook num.
+	// However, if for REPLY direction, if we want to perform DNAT, this 
+	// is necessary only when SNAT is needed for the ORIGINAL direction. 
+	// So we need to check the inverted status bit for REPLY. --Will
+	
 	if (mtype == IP_NAT_MANIP_SRC)
 		statusbit = IPS_SRC_NAT;
 	else
@@ -372,9 +385,15 @@ unsigned int nat_packet(struct ip_conntrack *ct,
 
 	/* Invert if this is reply dir. */
 	if (dir == IP_CT_DIR_REPLY)
+		// If we want to perform DNAT for REPLY, SNAT need to be requested 
+		// for ORIGINAL direction. And ct->status only records the types of 
+		// NAT translation requested by ORIGINAL. That's why we need to do 
+		// inversion here. --Will
 		statusbit ^= IPS_NAT_MASK;
 
 	/* Non-atomic: these bits don't change. */
+	// Only perform the NAT translation if it's really needed by the 
+	// conntrack. --Will
 	if (ct->status & statusbit) {
 		struct ip_conntrack_tuple target;
 

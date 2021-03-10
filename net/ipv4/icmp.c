@@ -349,7 +349,7 @@ static void icmp_push_reply(struct icmp_bxm *icmp_param,
 	struct sk_buff *skb;
 
 	ip_append_data(icmp_socket->sk, icmp_glue_bits, icmp_param,
-		       icmp_param->data_len+icmp_param->head_len,
+		       icmp_param->data_len + icmp_param->head_len,
 		       icmp_param->head_len,
 		       ipc, rt, MSG_DONTWAIT);
 

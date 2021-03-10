@@ -584,16 +584,13 @@ resolve_normal_ct(struct sk_buff *skb,
 	} else {
 		/* Once we've had two way comms, always ESTABLISHED. */
 		if (test_bit(IPS_SEEN_REPLY_BIT, &ct->status)) {
-			DEBUGP("ip_conntrack_in: normal packet for %p\n",
-			       ct);
-		        *ctinfo = IP_CT_ESTABLISHED;
+			DEBUGP("ip_conntrack_in: normal packet for %p\n", ct);
+			*ctinfo = IP_CT_ESTABLISHED;
 		} else if (test_bit(IPS_EXPECTED_BIT, &ct->status)) {
-			DEBUGP("ip_conntrack_in: related packet for %p\n",
-			       ct);
+			DEBUGP("ip_conntrack_in: related packet for %p\n", ct);
 			*ctinfo = IP_CT_RELATED;
 		} else {
-			DEBUGP("ip_conntrack_in: new packet for %p\n",
-			       ct);
+			DEBUGP("ip_conntrack_in: new packet for %p\n", ct);
 			*ctinfo = IP_CT_NEW;
 		}
 		*set_reply = 0;
@@ -910,6 +907,7 @@ void ip_ct_refresh_acct(struct ip_conntrack *ct,
 
 	/* If not in hash table, timer will not be active yet */
 	if (!is_confirmed(ct)) {
+		// __ip_conntrack_confirm would re-define this when it's confirmed
 		ct->timeout.expires = extra_jiffies;
 		ct_add_counters(ct, ctinfo, skb);
 	} else {

@@ -478,6 +478,7 @@ static struct nf_hook_ops ip_conntrack_local_out_ops = {
 };
 
 /* Refragmenter; last chance. */
+// It also does ip_confirm in ip_refrag to confirm a new conn
 static struct nf_hook_ops ip_conntrack_out_ops = {
 	.hook		= ip_refrag,
 	.owner		= THIS_MODULE,

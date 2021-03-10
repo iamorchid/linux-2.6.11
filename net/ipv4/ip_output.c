@@ -719,6 +719,12 @@ csum_page(struct page *page, int offset, int copy)
 int ip_append_data(struct sock *sk,
 		   int getfrag(void *from, char *to, int offset, int len,
 			       int odd, struct sk_buff *skb),
+		   // The "length" is the size of IP payload, so that it includes 
+		   // transhdrlen if it's not zero. However, the data indicated by 
+		   // "from" only corresponds to the payload of L4 layer (namely 
+ 		   // not including L4 header). And we don't initialize L4 header 
+ 		   // here but just record it (it's initialized elsewhere, e.g. 
+ 		   // udp_push_pending_frames). --Will
 		   void *from, int length, int transhdrlen,
 		   struct ipcm_cookie *ipc, struct rtable *rt,
 		   unsigned int flags)
@@ -1176,6 +1182,7 @@ int ip_push_pending_frames(struct sock *sk)
 	 * how transforms change size of the packet, it will come out.
 	 */
 	if (inet->pmtudisc != IP_PMTUDISC_DO)
+		// ignore DF bit if it is set (namely, allow local fragmentation)
 		skb->local_df = 1;
 
 	/* DF bit is set when we want to see DF on outgoing frames.
