@@ -239,6 +239,8 @@ static inline int ip_local_deliver_finish(struct sk_buff *skb)
 				kfree_skb(skb);
 				goto out;
 			}
+
+			// skb should be free'ed by the protocol handler.
 			ret = ipprot->handler(skb);
 			if (ret < 0) {
 				protocol = -ret;

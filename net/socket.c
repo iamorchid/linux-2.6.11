@@ -430,15 +430,13 @@ struct socket *sockfd_lookup(int fd, int *err)
 	struct inode *inode;
 	struct socket *sock;
 
-	if (!(file = fget(fd)))
-	{
+	if (!(file = fget(fd))) {
 		*err = -EBADF;
 		return NULL;
 	}
 
 	inode = file->f_dentry->d_inode;
-	if (!inode->i_sock || !(sock = SOCKET_I(inode)))
-	{
+	if (!inode->i_sock || !(sock = SOCKET_I(inode))) {
 		*err = -ENOTSOCK;
 		fput(file);
 		return NULL;
@@ -448,6 +446,7 @@ struct socket *sockfd_lookup(int fd, int *err)
 		printk(KERN_ERR "socki_lookup: socket file changed!\n");
 		sock->file = file;
 	}
+	
 	return sock;
 }
 
@@ -603,7 +602,7 @@ int sock_recvmsg(struct socket *sock, struct msghdr *msg,
 	struct sock_iocb siocb;
 	int ret;
 
-        init_sync_kiocb(&iocb, NULL);
+	init_sync_kiocb(&iocb, NULL);
 	iocb.private = &siocb;
 	ret = __sock_recvmsg(&iocb, sock, msg, size, flags);
 	if (-EIOCBQUEUED == ret)
@@ -1281,9 +1280,8 @@ asmlinkage long sys_bind(int fd, struct sockaddr __user *umyaddr, int addrlen)
 	char address[MAX_SOCK_ADDR];
 	int err;
 
-	if((sock = sockfd_lookup(fd,&err))!=NULL)
-	{
-		if((err=move_addr_to_kernel(umyaddr,addrlen,address))>=0) {
+	if((sock = sockfd_lookup(fd, &err)) != NULL) {
+		if((err = move_addr_to_kernel(umyaddr, addrlen, address)) >= 0) {
 			err = security_socket_bind(sock, (struct sockaddr *)address, addrlen);
 			if (err) {
 				sockfd_put(sock);

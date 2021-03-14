@@ -1231,7 +1231,7 @@ void fastcall release_sock(struct sock *sk)
 	if (sk->sk_backlog.tail)
 		__release_sock(sk);
 	sk->sk_lock.owner = NULL;
-        if (waitqueue_active(&(sk->sk_lock.wq)))
+	if (waitqueue_active(&(sk->sk_lock.wq)))
 		wake_up(&(sk->sk_lock.wq));
 	spin_unlock_bh(&(sk->sk_lock.slock));
 }

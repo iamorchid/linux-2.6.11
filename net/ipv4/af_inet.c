@@ -248,6 +248,11 @@ static int inet_create(struct socket *sock, int protocol)
 
 		/* Check the non-wild match. */
 		if (protocol == answer->protocol) {
+			// If both protocol and answer->protocol are IPPROTO_IP, we 
+			// ignore such match. For SOCK_RAW, the answer->protocol is 
+			// IPPROTO_IP (namely wildcard matching any L4 protocol), we 
+			// should not use IPPROTO_IP in creating socket in app. 
+			// --Will
 			if (protocol != IPPROTO_IP)
 				break;
 		} else {

@@ -320,8 +320,8 @@ static int inet_insert_ifa(struct in_ifaddr *ifa)
 		}
 	}
 
-	// Only primary address would be inserted using the above order, while 
-	// secondary address is always appended to tail.
+	// Only primary address would be inserted using the above order, 
+	// while secondary address is always appended to tail. --Will
 	if (!(ifa->ifa_flags & IFA_F_SECONDARY)) {
 		net_srandom(ifa->ifa_local);
 		ifap = last_primary;

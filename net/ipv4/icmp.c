@@ -519,10 +519,20 @@ void icmp_send(struct sk_buff *skb_in, int type, int code, u32 info)
 					  iph->tos;
 
 	{
-		struct flowi fl = { .nl_u = { .ip4_u = { .daddr = iph->saddr,
-							 .saddr = saddr,
-							 .tos = RT_TOS(tos) } },
-				    .proto = IPPROTO_ICMP };
+		// Why daddr is using iph->saddr ? iph is the header of in-gress 
+		// packet and iph->saddr is the remote address we want to reply.
+		// --Will
+        struct flowi fl = { 
+            .nl_u = { 
+                .ip4_u = { 
+                    .daddr = iph->saddr,
+                    .saddr = saddr,
+                    .tos = RT_TOS(tos) 
+                } 
+            },
+			.proto = IPPROTO_ICMP 
+        };
+
 		if (ip_route_output_key(&rt, &fl))
 		    goto out_unlock;
 	}
@@ -603,6 +613,9 @@ static void icmp_unreach(struct sk_buff *skb)
 		goto out_err;
 
 	icmph = skb->h.icmph;
+
+	// icmp payload which starts with IP header of the packet 
+	// that causes receiving this icmp unreach msg. --Will
 	iph   = (struct iphdr *)skb->data;
 
 	if (iph->ihl < 5) /* Mangled header, drop. */
@@ -987,6 +1000,7 @@ error:
  *	This table is the definition of how we handle ICMP.
  */
 static struct icmp_control icmp_pointers[NR_ICMP_TYPES + 1] = {
+	// ICMP_ECHOREPLY should be handled in user space.
 	[ICMP_ECHOREPLY] = {
 		.output_entry = ICMP_MIB_OUTECHOREPS,
 		.input_entry = ICMP_MIB_INECHOREPS,

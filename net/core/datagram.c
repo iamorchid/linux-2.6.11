@@ -98,6 +98,9 @@ static int wait_for_packet(struct sock *sk, int *err, long *timeo_p)
 		goto interrupted;
 
 	error = 0;
+	// [QUESTION]
+	// What if a packet has just arrived before we enter the 
+	// schedule? Could we still go to sleep ? --Will
 	*timeo_p = schedule_timeout(*timeo_p);
 out:
 	finish_wait(sk->sk_sleep, &wait);

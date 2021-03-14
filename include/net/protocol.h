@@ -57,6 +57,7 @@ struct inet6_protocol
 #endif
 
 /* This is used to register socket interfaces for IP protocols.  */
+// sw means "switch"
 struct inet_protosw {
 	struct list_head list;
 
@@ -64,7 +65,12 @@ struct inet_protosw {
 	unsigned short	 type;	   /* This is the 2nd argument to socket(2). */
 	int		 protocol; /* This is the L4 protocol number.  */
 
+	// L4 related protocol implementation.
 	struct proto	 *prot;
+
+	// protocol operations provided to user space from kernel.
+	// And the ops here would call into L4 protocol impl.
+	// --Will
 	struct proto_ops *ops;
   
 	int              capability; /* Which (if any) capability do

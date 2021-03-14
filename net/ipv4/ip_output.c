@@ -719,8 +719,10 @@ csum_page(struct page *page, int offset, int copy)
 int ip_append_data(struct sock *sk,
 		   int getfrag(void *from, char *to, int offset, int len,
 			       int odd, struct sk_buff *skb),
-		   // The "length" is the size of IP payload, so that it includes 
-		   // transhdrlen if it's not zero. However, the data indicated by 
+		   // The "length" is the size of IP payload, it SHOULD include 
+		   // transhdrlen if this is first fragment (and not include it 
+		   // otherwise). Note it's the caller's responsiblity to comply 
+		   // with this. However, the data indicated by the argument
 		   // "from" only corresponds to the payload of L4 layer (namely 
  		   // not including L4 header). And we don't initialize L4 header 
  		   // here but just record it (it's initialized elsewhere, e.g. 
@@ -769,6 +771,11 @@ int ip_append_data(struct sock *sk,
 		inet->cork.length = 0;
 		sk->sk_sndmsg_page = NULL;
 		sk->sk_sndmsg_off = 0;
+		
+		// dst.header_len is the additional header length in L2 layer 
+		// or L3 layer ? For the code here, it is for L3 layer. However, 
+		// for latest linux kernel, it looks for L2 layer and is not 
+		// taken into account into mtu. --Will
 		if ((exthdrlen = rt->u.dst.header_len) != 0) {
 			length += exthdrlen;
 			transhdrlen += exthdrlen;
@@ -912,6 +919,11 @@ alloc_new_skb:
 			}
 
 			copy = datalen - transhdrlen - fraggap;
+			
+			// Note that transhdrlen has alread included exthdrlen. And data 
+			// has skipped IP header. So data + transhdrlen should point to 
+			// the start of L4 payload. Again that "from" here doesn't include 
+			// L4 header, that's why we skip transport header here. --Will
 			if (copy > 0 && getfrag(from, data + transhdrlen, offset, copy, fraggap, skb) < 0) {
 				err = -EFAULT;
 				kfree_skb(skb);

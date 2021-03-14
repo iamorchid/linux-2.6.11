@@ -980,6 +980,9 @@ void ip_rt_redirect(u32 old_gw, u32 daddr, u32 new_gw,
 	int i, k;
 	struct in_device *in_dev = in_dev_get(dev);
 	struct rtable *rth, **rthp;
+
+	// Enumberate all the routing lookup filters that we could 
+	// use for identifying the routing cache. --Will
 	u32  skeys[2] = { saddr, 0 };
 	int  ikeys[2] = { dev->ifindex, 0 };
 
@@ -1008,7 +1011,7 @@ void ip_rt_redirect(u32 old_gw, u32 daddr, u32 new_gw,
 						     skeys[i] ^ (ikeys[k] << 5),
 						     tos);
 
-			rthp=&rt_hash_table[hash].chain;
+			rthp = &rt_hash_table[hash].chain;
 
 			rcu_read_lock();
 			while ((rth = rcu_dereference(*rthp)) != NULL) {
@@ -1028,6 +1031,10 @@ void ip_rt_redirect(u32 old_gw, u32 daddr, u32 new_gw,
 				    rth->u.dst.error ||
 				    rth->rt_gateway != old_gw ||
 				    rth->u.dst.dev != dev)
+				    // The routing lookup filters above can identify a routing 
+				    // cache that leads to daddr though, there're some info not 
+				    // matching what we expect (not that there could be multiple 
+				    // routes leading to the daddr). --Will
 					break;
 
 				dst_hold(&rth->u.dst);
@@ -1068,6 +1075,8 @@ void ip_rt_redirect(u32 old_gw, u32 daddr, u32 new_gw,
 				if (rt->peer)
 					atomic_inc(&rt->peer->refcnt);
 
+				// Before we replace the existing routing cache, we need to 
+				// ensure that the new neighbour is really usable. --Will
 				if (arp_bind_neighbour(&rt->u.dst) ||
 				    !(rt->u.dst.neighbour->nud_state &
 					    NUD_VALID)) {
@@ -2062,9 +2071,10 @@ static int ip_route_output_slow(struct rtable **rp, const struct flowi *oldflp)
 	free_res = 1;
 
 	// If packet is accepted locally (namely the dst address 
-	// is one of our local interface addresses), we also use 
-	// loopback address here. Note that this logic has changed 
-	// in latest kernel version. --Will
+	// is one of our local interface addresses when oif is not 
+	// provided. When oif is provided, the dst address need be  
+	// one of the addresses associated with oif), we also use 
+ 	// loopback address here. --Will
 	if (res.type == RTN_LOCAL) {
 		if (!fl.fl4_src)
 			fl.fl4_src = fl.fl4_dst;

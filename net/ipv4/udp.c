@@ -528,6 +528,9 @@ int udp_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		}
 		release_sock(sk);
 	}
+
+	// If this is first fragment, we MUST include the L4
+	// header into the L3 payload. --Will
 	ulen += sizeof(struct udphdr);
 
 	/*
@@ -598,15 +601,23 @@ int udp_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		rt = (struct rtable*)sk_dst_check(sk, 0);
 
 	if (rt == NULL) {
-		struct flowi fl = { .oif = ipc.oif,
-				    .nl_u = { .ip4_u =
-					      { .daddr = faddr,
-						.saddr = saddr,
-						.tos = tos } },
-				    .proto = IPPROTO_UDP,
-				    .uli_u = { .ports =
-					       { .sport = inet->sport,
-						 .dport = dport } } };
+		struct flowi fl = { 
+			.oif = ipc.oif,
+			.nl_u = { 
+				.ip4_u = { 
+					.daddr = faddr,
+					.saddr = saddr,
+					.tos = tos 
+				} 
+			},
+			.proto = IPPROTO_UDP,
+			.uli_u = { 
+				.ports = { 
+					.sport = inet->sport,
+					.dport = dport 
+				} 
+			} 
+		};
 		err = ip_route_output_flow(&rt, &fl, sk, !(msg->msg_flags&MSG_DONTWAIT));
 		if (err)
 			goto out;
@@ -807,7 +818,7 @@ try_again:
 		msg->msg_flags |= MSG_TRUNC;
 	}
 
-	if (skb->ip_summed==CHECKSUM_UNNECESSARY) {
+	if (skb->ip_summed == CHECKSUM_UNNECESSARY) {
 		err = skb_copy_datagram_iovec(skb, sizeof(struct udphdr), msg->msg_iov,
 					      copied);
 	} else if (msg->msg_flags&MSG_TRUNC) {
@@ -1040,7 +1051,7 @@ static int udp_queue_rcv_skb(struct sock * sk, struct sk_buff *skb)
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 	}
 
-	if (sock_queue_rcv_skb(sk,skb)<0) {
+	if (sock_queue_rcv_skb(sk,skb) < 0) {
 		UDP_INC_STATS_BH(UDP_MIB_INERRORS);
 		kfree_skb(skb);
 		return -1;
