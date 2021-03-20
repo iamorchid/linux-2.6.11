@@ -1296,7 +1296,10 @@ int dev_queue_xmit(struct sk_buff *skb)
 		int cpu = smp_processor_id(); /* ok because BHs are off */
 
 		if (dev->xmit_lock_owner != cpu) {
-
+			// When dev->xmit_lock_owner != cpu, if dev->xmit_lock_owner
+			// is -1, it means the xmit_lock on the device is not owned
+			// by other cpu. Otherwise, it's owned by other cpu and this 
+			// cpu would spin to obtain the lock in HARD_TX_LOCK. --Will
 			HARD_TX_LOCK(dev, cpu);
 
 			if (!netif_queue_stopped(dev)) {
@@ -1314,8 +1317,7 @@ int dev_queue_xmit(struct sk_buff *skb)
 				printk(KERN_CRIT "Virtual device %s asks to "
 				       "queue packet!\n", dev->name);
 		} else {
-			/* Recursion is detected! It is possible,
-			 * unfortunately */
+			/* Recursion is detected! It is possible, unfortunately */
 			if (net_ratelimit())
 				printk(KERN_CRIT "Dead loop on virtual device "
 				       "%s, fix it urgently!\n", dev->name);

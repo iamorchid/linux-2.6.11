@@ -480,6 +480,7 @@ int ip_fragment(struct sk_buff *skb, int (*output)(struct sk_buff*))
 		struct sk_buff *frag;
 		int first_len = skb_pagelen(skb);
 
+		// Note that the mtu here doesn't include IP header
 		if (first_len - hlen > mtu ||
 		    ((first_len - hlen) & 7) ||
 		    (iph->frag_off & htons(IP_MF|IP_OFFSET)) ||
@@ -763,6 +764,10 @@ int ip_append_data(struct sock *sk,
 			}
 			memcpy(inet->cork.opt, opt, sizeof(struct ip_options)+opt->optlen);
 			inet->cork.flags |= IPCORK_OPT;
+
+			// record the final destination. When source routing option exists, 
+			// the daddr in IP header may not be the final destination address.
+			// --Will
 			inet->cork.addr = ipc->addr;
 		}
 		dst_hold(&rt->u.dst);

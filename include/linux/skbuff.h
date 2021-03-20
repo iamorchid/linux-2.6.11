@@ -249,7 +249,12 @@ struct sk_buff {
 	unsigned short		protocol,
 				security;
 
+	// The field name is a bit misleading as it doesn't perform 
+	// freeing skb. It's used when we mark the skb unowned. For 
+	// more details, refer to skb_orphan, skb_set_owner_r and 
+	// skb_set_owner_w functions. --Will
 	void			(*destructor)(struct sk_buff *skb);
+
 #ifdef CONFIG_NETFILTER
         unsigned long		nfmark;
 	__u32			nfcache;
@@ -903,6 +908,7 @@ static inline int pskb_trim(struct sk_buff *skb, unsigned int len)
  */
 static inline void skb_orphan(struct sk_buff *skb)
 {
+	// see skb_set_owner_r and skb_set_owner_r for more details
 	if (skb->destructor)
 		skb->destructor(skb);
 	skb->destructor = NULL;

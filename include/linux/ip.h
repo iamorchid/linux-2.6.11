@@ -94,7 +94,7 @@ struct ip_options {
   unsigned char is_setbyuser:1,			/* Set by setsockopt?			*/
                 is_data:1,			/* Options in __data, rather than skb	*/
                 is_strictroute:1,		/* Strict source route			*/
-                srr_is_hit:1,			/* Packet destination addr was our one	*/
+                srr_is_hit:1,			/* Packet destination addr was defined in ssr	*/
                 is_changed:1,			/* IP checksum more not valid		*/	
                 rr_needaddr:1,			/* Need to record addr of outgoing dev	*/
                 ts_needtime:1,			/* Need to record timestamp		*/
@@ -136,6 +136,7 @@ struct inet_sock {
 	int			mc_index;	/* Multicast device index */
 	__u32			mc_addr;
 	struct ip_mc_socklist	*mc_list;	/* Group array */
+	
 	/*
 	 * Following members are used to retain the infomation to build
 	 * an ip header on each ip fragmentation while the socket is corked.
@@ -146,7 +147,7 @@ struct inet_sock {
 		struct ip_options	*opt;
 		struct rtable		*rt;
 		int			length; /* Total length of all frames */
-		u32			addr;
+		u32			addr; /* final destination address */
 		struct flowi		fl;
 	} cork;
 };

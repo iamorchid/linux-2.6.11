@@ -579,6 +579,10 @@ int udp_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	if (ipc.opt && ipc.opt->srr) {
 		if (!daddr)
 			return -EINVAL;
+		// opt->faddr would record the destination address for 
+		// the IP packet (see ip_options_compile) of next hop.
+		// And ipc.addr records the final destination address 
+		// to which the packet really wants to go. --Will
 		faddr = ipc.opt->faddr;
 		connected = 0;
 	}

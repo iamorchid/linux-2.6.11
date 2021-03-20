@@ -208,6 +208,7 @@ struct sock {
 	atomic_t		sk_omem_alloc;
 	int			sk_wmem_queued;
 	int			sk_forward_alloc;
+	// memory allocation flags
 	unsigned int		sk_allocation;
 	int			sk_sndbuf;
 	unsigned long 		sk_flags;

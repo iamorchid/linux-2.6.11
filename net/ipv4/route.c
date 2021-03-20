@@ -815,11 +815,16 @@ restart:
 			rth->u.dst.lastuse = now;
 			spin_unlock_bh(&rt_hash_table[hash].lock);
 
+			// free this rtable as we don't need it any more.
 			rt_drop(rt);
+			
 			*rp = rth;
 			return 0;
 		}
 
+		// When we call kfree_skb, we would call dst_release, which 
+		// only decreases __refcnt of dst (so even if dst->__refcnt
+		// is 0, it could still live in routing cache). --Will
 		if (!atomic_read(&rth->u.dst.__refcnt)) {
 			u32 score = rt_score(rth);
 
@@ -2152,8 +2157,8 @@ make_route:
 	rth = dst_alloc(&ipv4_dst_ops);
 	if (!rth)
 		goto e_nobufs;
-
 	atomic_set(&rth->u.dst.__refcnt, 1);
+	
 	rth->u.dst.flags = DST_HOST;
 	if (in_dev->cnf.no_xfrm)
 		rth->u.dst.flags |= DST_NOXFRM;

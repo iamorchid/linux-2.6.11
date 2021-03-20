@@ -44,8 +44,12 @@ void ip_options_build(struct sk_buff * skb, struct ip_options * opt,
 	opt = &(IPCB(skb)->opt);
 	opt->is_data = 0;
 
+	// Here we write the final destination address into option.
+	// Also see ip_options_compile. --Will
 	if (opt->srr)
-		memcpy(iph+opt->srr+iph[opt->srr+1]-4, &daddr, 4);
+		// opt->srr is the offset to the start ip header.
+		// iph[opt->srr+1] is the length of srr. --Will
+		memcpy(iph + (opt->srr+iph[opt->srr+1]-4), &daddr, 4);
 
 	if (!is_frag) {
 		if (opt->rr_needaddr)
@@ -61,6 +65,9 @@ void ip_options_build(struct sk_buff * skb, struct ip_options * opt,
 		}
 		return;
 	}
+
+	// We don't copy Record Route and Timestamp option for 
+	// non-first IP fragment. --Will
 	if (opt->rr) {
 		memset(iph+opt->rr, IPOPT_NOP, iph[opt->rr+1]);
 		opt->rr = 0;
@@ -243,219 +250,226 @@ void ip_options_fragment(struct sk_buff * skb)
  * If opt == NULL, then skb->data should point to IP header.
  */
 
-int ip_options_compile(struct ip_options * opt, struct sk_buff * skb)
+int ip_options_compile(struct ip_options * opt, struct sk_buff * skb) 
 {
-	int l;
-	unsigned char * iph;
-	unsigned char * optptr;
-	int optlen;
-	unsigned char * pp_ptr = NULL;
-	struct rtable *rt = skb ? (struct rtable*)skb->dst : NULL;
+    int l;
+    unsigned char * iph;
+    unsigned char * optptr;
+    int optlen;
+    unsigned char * pp_ptr = NULL;
+    struct rtable * rt = skb ? (struct rtable * ) skb->dst : NULL;
 
-	if (!opt) {
-		opt = &(IPCB(skb)->opt);
-		memset(opt, 0, sizeof(struct ip_options));
-		iph = skb->nh.raw;
-		opt->optlen = ((struct iphdr *)iph)->ihl*4 - sizeof(struct iphdr);
-		optptr = iph + sizeof(struct iphdr);
-		opt->is_data = 0;
-	} else {
-		optptr = opt->is_data ? opt->__data : (unsigned char*)&(skb->nh.iph[1]);
-		iph = optptr - sizeof(struct iphdr);
-	}
+    if (!opt) {
+        opt = &(IPCB(skb)->opt);
+        memset(opt, 0, sizeof(struct ip_options));
+        iph = skb->nh.raw;
+        opt->optlen = ((struct iphdr * ) iph)->ihl * 4 - sizeof(struct iphdr);
+        optptr = iph + sizeof(struct iphdr);
+        opt->is_data = 0;
+    } else {
+        optptr = opt->is_data ? opt->__data : (unsigned char * ) &(skb->nh.iph[1]);
+        iph = optptr - sizeof(struct iphdr);
+    }
 
-	for (l = opt->optlen; l > 0; ) {
-		switch (*optptr) {
-		      case IPOPT_END:
-			for (optptr++, l--; l>0; optptr++, l--) {
-				if (*optptr != IPOPT_END) {
-					*optptr = IPOPT_END;
-					opt->is_changed = 1;
-				}
-			}
-			goto eol;
-		      case IPOPT_NOOP:
-			l--;
-			optptr++;
-			continue;
-		}
-		optlen = optptr[1];
-		if (optlen<2 || optlen>l) {
-			pp_ptr = optptr;
-			goto error;
-		}
-		switch (*optptr) {
-		      case IPOPT_SSRR:
-		      case IPOPT_LSRR:
-			if (optlen < 3) {
-				pp_ptr = optptr + 1;
-				goto error;
-			}
-			if (optptr[2] < 4) {
-				pp_ptr = optptr + 2;
-				goto error;
-			}
-			/* NB: cf RFC-1812 5.2.4.1 */
-			if (opt->srr) {
-				pp_ptr = optptr;
-				goto error;
-			}
-			if (!skb) {
-				if (optptr[2] != 4 || optlen < 7 || ((optlen-3) & 3)) {
-					pp_ptr = optptr + 1;
-					goto error;
-				}
-				memcpy(&opt->faddr, &optptr[3], 4);
-				if (optlen > 7)
-					memmove(&optptr[3], &optptr[7], optlen-7);
-			}
-			opt->is_strictroute = (optptr[0] == IPOPT_SSRR);
-			opt->srr = optptr - iph;
-			break;
-		      case IPOPT_RR:
-			if (opt->rr) {
-				pp_ptr = optptr;
-				goto error;
-			}
-			if (optlen < 3) {
-				pp_ptr = optptr + 1;
-				goto error;
-			}
-			if (optptr[2] < 4) {
-				pp_ptr = optptr + 2;
-				goto error;
-			}
-			if (optptr[2] <= optlen) {
-				if (optptr[2]+3 > optlen) {
-					pp_ptr = optptr + 2;
-					goto error;
-				}
-				if (skb) {
-					memcpy(&optptr[optptr[2]-1], &rt->rt_spec_dst, 4);
-					opt->is_changed = 1;
-				}
-				optptr[2] += 4;
-				opt->rr_needaddr = 1;
-			}
-			opt->rr = optptr - iph;
-			break;
-		      case IPOPT_TIMESTAMP:
-			if (opt->ts) {
-				pp_ptr = optptr;
-				goto error;
-			}
-			if (optlen < 4) {
-				pp_ptr = optptr + 1;
-				goto error;
-			}
-			if (optptr[2] < 5) {
-				pp_ptr = optptr + 2;
-				goto error;
-			}
-			if (optptr[2] <= optlen) {
-				__u32 * timeptr = NULL;
-				if (optptr[2]+3 > optptr[1]) {
-					pp_ptr = optptr + 2;
-					goto error;
-				}
-				switch (optptr[3]&0xF) {
-				      case IPOPT_TS_TSONLY:
-					opt->ts = optptr - iph;
-					if (skb) 
-						timeptr = (__u32*)&optptr[optptr[2]-1];
-					opt->ts_needtime = 1;
-					optptr[2] += 4;
-					break;
-				      case IPOPT_TS_TSANDADDR:
-					if (optptr[2]+7 > optptr[1]) {
-						pp_ptr = optptr + 2;
-						goto error;
-					}
-					opt->ts = optptr - iph;
-					if (skb) {
-						memcpy(&optptr[optptr[2]-1], &rt->rt_spec_dst, 4);
-						timeptr = (__u32*)&optptr[optptr[2]+3];
-					}
-					opt->ts_needaddr = 1;
-					opt->ts_needtime = 1;
-					optptr[2] += 8;
-					break;
-				      case IPOPT_TS_PRESPEC:
-					if (optptr[2]+7 > optptr[1]) {
-						pp_ptr = optptr + 2;
-						goto error;
-					}
-					opt->ts = optptr - iph;
+    for (l = opt->optlen; l > 0;) {
+        switch (* optptr) {
+        case IPOPT_END:
+            for (optptr++, l--; l > 0; optptr++, l--) {
+                if (* optptr != IPOPT_END) {
+                    * optptr = IPOPT_END;
+                    opt->is_changed = 1;
+                }
+            }
+            goto eol;
+        case IPOPT_NOOP:
+            l--;
+            optptr++;
+            continue;
+        }
+        optlen = optptr[1];
+        if (optlen < 2 || optlen > l) {
+            pp_ptr = optptr;
+            goto error;
+        }
+        switch (* optptr) {
+        case IPOPT_SSRR:
+        case IPOPT_LSRR:
+            if (optlen < 3) {
+                pp_ptr = optptr + 1;
+                goto error;
+            }
+            if (optptr[2] < 4) {
+                pp_ptr = optptr + 2;
+                goto error;
+            }
+            /* NB: cf RFC-1812 5.2.4.1 */
+            if (opt->srr) {
+                pp_ptr = optptr;
+                goto error;
+            }
+            if (!skb) {
+				// This is for an outgoing packet from local host
+                if (optptr[2] != 4 || optlen < 7 || ((optlen - 3) & 3)) {
+                    pp_ptr = optptr + 1;
+                    goto error;
+                }
+
+				// Here we extract the destination for the next hop and 
+				// move the left source list for room to write the final 
+				// destination of the IP packet (see how ip_options_build
+				// adds back the final destination). --Will
+                memcpy(&opt->faddr, &optptr[3], 4);
+                if (optlen > 7)
+                    memmove(&optptr[3], &optptr[7], optlen - 7);
+            }
+            opt->is_strictroute = (optptr[0] == IPOPT_SSRR);
+            opt->srr = optptr - iph;
+            break;
+        case IPOPT_RR:
+            if (opt->rr) {
+                pp_ptr = optptr;
+                goto error;
+            }
+            if (optlen < 3) {
+                pp_ptr = optptr + 1;
+                goto error;
+            }
+            if (optptr[2] < 4) {
+                pp_ptr = optptr + 2;
+                goto error;
+            }
+            if (optptr[2] <= optlen) {
+                if (optptr[2] + 3 > optlen) {
+                    pp_ptr = optptr + 2;
+                    goto error;
+                }
+                if (skb) {
+                    memcpy(&optptr[optptr[2] - 1], &rt->rt_spec_dst, 4);
+                    opt->is_changed = 1;
+                }
+                optptr[2] += 4;
+                opt->rr_needaddr = 1;
+            }
+            opt->rr = optptr - iph;
+            break;
+        case IPOPT_TIMESTAMP:
+            if (opt->ts) {
+                pp_ptr = optptr;
+                goto error;
+            }
+            if (optlen < 4) {
+                pp_ptr = optptr + 1;
+                goto error;
+            }
+            if (optptr[2] < 5) {
+                pp_ptr = optptr + 2;
+                goto error;
+            }
+            if (optptr[2] <= optlen) {
+                __u32 * timeptr = NULL;
+                if (optptr[2] + 3 > optptr[1]) {
+                    pp_ptr = optptr + 2;
+                    goto error;
+                }
+                switch (optptr[3]&0xF) {
+                case IPOPT_TS_TSONLY:
+                    opt->ts = optptr - iph;
+                    if (skb)
+                        timeptr = (__u32 * ) &optptr[optptr[2] - 1];
+                    opt->ts_needtime = 1;
+                    optptr[2] += 4;
+                    break;
+                case IPOPT_TS_TSANDADDR:
+                    if (optptr[2] + 7 > optptr[1]) {
+                        pp_ptr = optptr + 2;
+                        goto error;
+                    }
+                    opt->ts = optptr - iph;
+                    if (skb) {
+                        memcpy(&optptr[optptr[2] - 1], &rt->rt_spec_dst, 4);
+                        timeptr = (__u32 * ) &optptr[optptr[2] + 3];
+                    }
+                    opt->ts_needaddr = 1;
+                    opt->ts_needtime = 1;
+                    optptr[2] += 8;
+                    break;
+                case IPOPT_TS_PRESPEC:
+                    if (optptr[2] + 7 > optptr[1]) {
+                        pp_ptr = optptr + 2;
+                        goto error;
+                    }
+                    opt->ts = optptr - iph; 
 					{
-						u32 addr;
-						memcpy(&addr, &optptr[optptr[2]-1], 4);
-						if (inet_addr_type(addr) == RTN_UNICAST)
-							break;
-						if (skb)
-							timeptr = (__u32*)&optptr[optptr[2]+3];
-					}
-					opt->ts_needtime = 1;
-					optptr[2] += 8;
-					break;
-				      default:
-					if (!skb && !capable(CAP_NET_RAW)) {
-						pp_ptr = optptr + 3;
-						goto error;
-					}
-					break;
-				}
-				if (timeptr) {
-					struct timeval tv;
-					__u32  midtime;
-					do_gettimeofday(&tv);
-					midtime = htonl((tv.tv_sec % 86400) * 1000 + tv.tv_usec / 1000);
-					memcpy(timeptr, &midtime, sizeof(__u32));
-					opt->is_changed = 1;
-				}
-			} else {
-				unsigned overflow = optptr[3]>>4;
-				if (overflow == 15) {
-					pp_ptr = optptr + 3;
-					goto error;
-				}
-				opt->ts = optptr - iph;
-				if (skb) {
-					optptr[3] = (optptr[3]&0xF)|((overflow+1)<<4);
-					opt->is_changed = 1;
-				}
-			}
-			break;
-		      case IPOPT_RA:
-			if (optlen < 4) {
-				pp_ptr = optptr + 1;
-				goto error;
-			}
-			if (optptr[2] == 0 && optptr[3] == 0)
-				opt->router_alert = optptr - iph;
-			break;
-		      case IPOPT_SEC:
-		      case IPOPT_SID:
-		      default:
-			if (!skb && !capable(CAP_NET_RAW)) {
-				pp_ptr = optptr;
-				goto error;
-			}
-			break;
-		}
-		l -= optlen;
-		optptr += optlen;
-	}
+                        u32 addr;
+                        memcpy(&addr, &optptr[optptr[2] - 1], 4);
+                        if (inet_addr_type(addr) == RTN_UNICAST)
+                            break;
+                        if (skb)
+                            timeptr = (__u32 * ) &optptr[optptr[2] + 3];
+                    }
+                    opt->ts_needtime = 1;
+                    optptr[2] += 8;
+                    break;
+                default:
+                    if (!skb && !capable(CAP_NET_RAW)) {
+                        pp_ptr = optptr + 3;
+                        goto error;
+                    }
+                    break;
+                }
+                if (timeptr) {
+                    struct timeval tv;
+                    __u32 midtime;
+                    do_gettimeofday(&tv);
+                    midtime = htonl((tv.tv_sec % 86400) * 1000 + tv.tv_usec / 1000);
+                    memcpy(timeptr, &midtime, sizeof(__u32));
+                    opt->is_changed = 1;
+                }
+            } else {
+                unsigned overflow = optptr[3] >> 4;
+                if (overflow == 15) {
+                    pp_ptr = optptr + 3;
+                    goto error;
+                }
+                opt->ts = optptr - iph;
+                if (skb) {
+                    optptr[3] = (optptr[3]&0xF) | ((overflow + 1) << 4);
+                    opt->is_changed = 1;
+                }
+            }
+            break;
+        case IPOPT_RA:
+            if (optlen < 4) {
+                pp_ptr = optptr + 1;
+                goto error;
+            }
+            if (optptr[2] == 0 &&optptr[3] == 0)
+                opt->router_alert = optptr - iph;
+            break;
+        case IPOPT_SEC:
+        case IPOPT_SID:
+        default:
+            if (!skb && !capable(CAP_NET_RAW)) {
+                pp_ptr = optptr;
+                goto error;
+            }
+            break;
+        }
+        l -= optlen;
+        optptr += optlen;
+    }
 
-eol:
-	if (!pp_ptr)
-		return 0;
+    eol:
+        if (!pp_ptr)
+            return 0;
 
-error:
-	if (skb) {
-		icmp_send(skb, ICMP_PARAMETERPROB, 0, htonl((pp_ptr-iph)<<24));
-	}
-	return -EINVAL;
+    error:
+        if (skb) {
+            icmp_send(skb, ICMP_PARAMETERPROB, 0, htonl((pp_ptr - iph) << 24));
+        }
+    return -EINVAL;
 }
+
 
 
 /*
@@ -533,6 +547,7 @@ void ip_forward_options(struct sk_buff *skb)
 		ip_rt_get_source(&optptr[optptr[2]-5], rt);
 		opt->is_changed = 1;
 	}
+	
 	if (opt->srr_is_hit) {
 		int srrptr, srrspace;
 
@@ -554,12 +569,14 @@ void ip_forward_options(struct sk_buff *skb)
 			optptr[2] = srrptr+4;
 		} else if (net_ratelimit())
 			printk(KERN_CRIT "ip_forward(): Argh! Destination lost!\n");
+
 		if (opt->ts_needaddr) {
 			optptr = raw + opt->ts;
 			ip_rt_get_source(&optptr[optptr[2]-9], rt);
 			opt->is_changed = 1;
 		}
 	}
+
 	if (opt->is_changed) {
 		opt->is_changed = 0;
 		ip_send_check(skb->nh.iph);
@@ -580,17 +597,27 @@ int ip_options_rcv_srr(struct sk_buff *skb)
 	if (!opt->srr)
 		return 0;
 
+	// The packet SHOULD be sent to us in terms of L2 layer.
 	if (skb->pkt_type != PACKET_HOST)
 		return -EINVAL;
+
+	// If the packet is not sent to us in terms of L3 layer,
+	// Loose Source Routing must be enabled. --Will
 	if (rt->rt_type == RTN_UNICAST) {
 		if (!opt->is_strictroute)
 			return 0;
 		icmp_send(skb, ICMP_PARAMETERPROB, 0, htonl(16<<24));
 		return -EINVAL;
 	}
+	
 	if (rt->rt_type != RTN_LOCAL)
 		return -EINVAL;
 
+	// option format: type,length,pointer,...
+	// optptr[2] records the offset from the beginning of the 
+	// option (the offset starts from 1, so 1 identifies the 
+	// location of type field). Here optptr[2] points to the 
+	// offset of destination address of next hop. --Will
 	for (srrptr=optptr[2], srrspace = optptr[1]; srrptr <= srrspace; srrptr += 4) {
 		if (srrptr + 3 > srrspace) {
 			icmp_send(skb, ICMP_PARAMETERPROB, 0, htonl((opt->srr+2)<<24));
