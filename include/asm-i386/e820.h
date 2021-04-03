@@ -12,7 +12,7 @@
 #ifndef __E820_HEADER
 #define __E820_HEADER
 
-#define E820MAP	0x2d0		/* our map */
+#define E820MAP	0x2d0		/* our map (relative to 0x9000 segment) */
 #define E820MAX	32		/* number of entries in E820MAP */
 #define E820NR	0x1e8		/* # entries in E820MAP */
 

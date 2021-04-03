@@ -1616,9 +1616,13 @@ asmlinkage long sys_setsockopt(int fd, int level, int optname, char __user *optv
 		}
 
 		if (level == SOL_SOCKET)
-			err=sock_setsockopt(sock,level,optname,optval,optlen);
+			// Set generic socket option
+			err = sock_setsockopt(sock,level,optname,optval,optlen);
 		else
-			err=sock->ops->setsockopt(sock, level, optname, optval, optlen);
+			// Set more specific socket option. The level could be 
+			// SOL_IP and optname could be somehting like IP_TOS,
+			// IP_TTL, IP_OPTIONS ect. --Will
+			err = sock->ops->setsockopt(sock, level, optname, optval, optlen);
 		sockfd_put(sock);
 	}
 	return err;

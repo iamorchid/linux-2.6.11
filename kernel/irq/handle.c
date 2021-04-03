@@ -80,7 +80,7 @@ fastcall int handle_IRQ_event(unsigned int irq, struct pt_regs *regs,
 {
 	int ret, retval = 0, status = 0;
 
-    // SA_INTERRUPT indicates if we need to handle IRQ with interrupt disabled
+	// SA_INTERRUPT indicates if we need to handle IRQ with interrupt disabled
 	if (!(action->flags & SA_INTERRUPT))
 		local_irq_enable();
 

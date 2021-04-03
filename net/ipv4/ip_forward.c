@@ -69,6 +69,7 @@ int ip_forward(struct sk_buff *skb)
 	if (skb->pkt_type != PACKET_HOST)
 		goto drop;
 
+	// Tell hardwire that no checksum is needed
 	skb->ip_summed = CHECKSUM_NONE;
 	
 	/*
@@ -80,7 +81,7 @@ int ip_forward(struct sk_buff *skb)
 	iph = skb->nh.iph;
 
 	if (iph->ttl <= 1)
-                goto too_many_hops;
+		goto too_many_hops;
 
 	if (!xfrm4_route_forward(skb))
 		goto drop;

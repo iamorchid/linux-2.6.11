@@ -20,7 +20,10 @@
 
 extern int vector_irq[NR_VECTORS];
 extern cpumask_t pending_irq_balance_cpumask[NR_IRQS];
+
+/* defined in entry.S assembly file */
 extern void (*interrupt[NR_IRQS])(void);
+
 extern int pci_vector_resources(int last, int nr_released);
 
 #ifdef CONFIG_SMP

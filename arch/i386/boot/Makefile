@@ -34,9 +34,12 @@ hostprogs-y	:= tools/build
 HOSTCFLAGS_build.o := $(LINUXINCLUDE)
 
 # ---------------------------------------------------------------------------
-
+# For zImage, the system should be moved to 0x1000 (name 0x0100 segment). 
+# Originally, the loader loads the system to 0x10000 (see boot.txt). And 
+# it would be moved to 0x1000 in setup.S. --Will
 $(obj)/zImage:  IMAGE_OFFSET := 0x1000
 $(obj)/zImage:  EXTRA_AFLAGS := -traditional $(SVGA_MODE) $(RAMDISK)
+
 $(obj)/bzImage: IMAGE_OFFSET := 0x100000
 $(obj)/bzImage: EXTRA_AFLAGS := -traditional $(SVGA_MODE) $(RAMDISK) -D__BIG_KERNEL__
 $(obj)/bzImage: BUILDFLAGS   := -b
@@ -53,6 +56,10 @@ $(obj)/zImage $(obj)/bzImage: $(obj)/bootsect $(obj)/setup \
 $(obj)/vmlinux.bin: $(obj)/compressed/vmlinux FORCE
 	$(call if_changed,objcopy)
 
+# The text offset of bootsect.S and setup.S are set to 0. As they work in 
+# real-mode, so if the CS segement is set correctly to the start of their 
+# code, they don't need to care about the absolute address of symbols. That 
+# is, they are re-locatable. --Will
 LDFLAGS_bootsect := -Ttext 0x0 -s --oformat binary
 LDFLAGS_setup	 := -Ttext 0x0 -s --oformat binary -e begtext
 

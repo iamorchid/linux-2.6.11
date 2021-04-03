@@ -276,6 +276,9 @@ Such a boot loader should enter the following fields in the header:
 			ramdisk_size = <initrd_size>;
 		}
 		if ( protocol >= 0x0201 ) {
+			// This means we only leave 0x200 (512) bytes to stack
+			// and the stack ranges from (0x9000, 0x9000 - 0x200] 
+			// from high to low address. --Will
 			heap_end_ptr = 0x9000 - 0x200;
 			loadflags |= 0x80; /* CAN_USE_HEAP */
 		}

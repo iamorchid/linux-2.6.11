@@ -642,6 +642,7 @@ int fastcall do_signal(struct pt_regs *regs, sigset_t *oldset)
  * notification of userspace execution resumption
  * - triggered by current->work.notify_resume
  */
+// The params are passed by EAX, EDX and ECX.
 __attribute__((regparm(3)))
 void do_notify_resume(struct pt_regs *regs, sigset_t *oldset,
 		      __u32 thread_info_flags)

@@ -24,7 +24,7 @@
  *	 0(%esp) - %ebx
  *	 4(%esp) - %ecx
  *	 8(%esp) - %edx
- *  C(%esp) - %esi
+ *	 C(%esp) - %esi
  *	10(%esp) - %edi
  *	14(%esp) - %ebp
  *	18(%esp) - %eax
@@ -178,13 +178,19 @@ ENTRY(resume_userspace)
 ENTRY(resume_kernel)
 	cli
 	cmpl $0,TI_preempt_count(%ebp)	# non-zero preempt_count ?
-	jnz restore_all
+	jnz restore_all			# It means the previous kernel control path 
+					# is in interrupt context or preemption has 
+					# been explicitly disabled. --Will	
 need_resched:
 	movl TI_flags(%ebp), %ecx	# need_resched set ?
 	testb $_TIF_NEED_RESCHED, %cl
 	jz restore_all
 	testl $IF_MASK,EFLAGS(%esp)     # interrupts off (exception path) ?
-	jz restore_all
+	jz restore_all			# How could this happen that the previous 
+					# kernel control path was interrupted even 
+					# if the IF was cleared (namely interrupt 
+					# was disabled) ? --Will
+
 	call preempt_schedule_irq
 	jmp need_resched
 #endif
@@ -265,7 +271,9 @@ restore_all:
 work_pending:
 	testb $_TIF_NEED_RESCHED, %cl
 	jz work_notifysig
-work_resched:
+work_resched:				# Previous kernel control path has been 
+					# preempted and we need to schedule the 
+					# process switching.
 	call schedule
 	cli				# make sure we don't miss an interrupt
 					# setting need_resched or sigpending
@@ -337,6 +345,10 @@ syscall_badsys:
 /*
  * Build the entry stubs and pointer table with
  * some assembler magic.
+ * 
+ * In the data section, we would define NR_IRQS longs 
+ * (interrupt service routing addresses) which are 
+ * pointed by the interrupt here. --Will
  */
 .data
 ENTRY(interrupt)    # used by init_IRQ method

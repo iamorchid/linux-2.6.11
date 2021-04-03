@@ -183,11 +183,20 @@ ENTRY(startup_32_smp)
 /*
  * Enable paging
  */
-	movl $swapper_pg_dir-__PAGE_OFFSET,%eax
+	movl $swapper_pg_dir-__PAGE_OFFSET,%eax /* get physical address */
 	movl %eax,%cr3		/* set the page table pointer.. */
 	movl %cr0,%eax
 	orl $0x80000000,%eax
 	movl %eax,%cr0		/* ..and set paging (PG) bit */
+/*
+ * The boot/compressed/head.S calls into the code by:
+ *     ljmp $(__BOOT_CS), $0x100000
+ * Thus the linear address of the following instruction (namely eip) still 
+ * corresponds to identity physical address though we've enabled paging (we 
+ * are using identity PDE entry). After the following ljmp instruction, the 
+ * linear address should match what we've defined in Makefile (namely using
+ * text offset __PAGE_OFFSET).
+ */
 	ljmp $__BOOT_CS,$1f	/* Clear prefetch and normalize %eip */
 1:
 	/* Set up the stack pointer */
@@ -213,10 +222,13 @@ ENTRY(startup_32_smp)
  * in 16-bit mode for the "real" operations.
  */
 	call setup_idt
-
 /*
  * Copy bootup parameters out of the way.
  * Note: %esi still has the pointer to the real-mode data.
+ * 
+ * The first 4 sectors of setup header corresponds to params from 
+ * 0x9000:0x0000 to 0x9000:0x07ff (see setup.S) and %esi points to 
+ * 0x90000 (namely 0x9000:0x0000 in real-mode). --Will
  */
 	movl $boot_params,%edi
 	movl $(PARAM_SIZE/4),%ecx
@@ -300,6 +312,16 @@ is386:	movl $2,%ecx		# set MP
 
 	call check_x87
 	incb ready
+/*
+ * The GDTR and IDTR are loaded with a linear base address and limit value 
+ * from a six-byte operand in memory by the lgdt/lidt instructions.
+ *
+ * Since we have enabled paging above, we can use the linear address driectly 
+ * without offseting __PAGE_OFFSET. At the start of file, we performed lgdt 
+ * using the following form because we didn't enable paging yet then.
+ * lgdt boot_gdt_descr - __PAGE_OFFSET
+ *
+ */
 	lgdt cpu_gdt_descr
 	lidt idt_descr
 	ljmp $(__KERNEL_CS),$1f

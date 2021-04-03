@@ -529,6 +529,9 @@ int smp_call_function (void (*func) (void *info), void *info, int nonatomic,
 	if (wait)
 		atomic_set(&data.finished, 0);
 
+	// To ensure that we can only have one processor that makes 
+	// use of the global call_data variable (this is the shared 
+	// param that's needed by other cpus). --Will
 	spin_lock(&call_lock);
 	call_data = &data;
 	mb();

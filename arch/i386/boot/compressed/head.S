@@ -37,6 +37,14 @@ startup_32:
 	movl %eax,%fs
 	movl %eax,%gs
 
+/**
+ * Loads 32-bit pointer from memory source to destination register
+ * and SS.  The offset is placed in the destination register and the
+ * segment is placed in SS.  To use this instruction the word at the
+ * lower memory address must contain the offset and the word at the
+ * higher address must contain the segment. This simplifies the loading
+ * of far pointers from the stack and the interrupt vector table.
+ */
 	lss stack_start,%esp
 	xorl %eax,%eax
 1:	incl %eax		# check that A20 really IS enabled
@@ -45,7 +53,7 @@ startup_32:
 	je 1b
 
 /*
- * Initialize eflags.  Some BIOS's leave bits like NT set.  This would
+ * Initialize eflags. Some BIOS's leave bits like NT set.  This would
  * confuse the debugger if this code is traced.
  * XXX - best to initialize before switching to protected mode.
  */
@@ -54,6 +62,10 @@ startup_32:
 /*
  * Clear BSS
  */
+ /**
+  * Symbols _etext, _edata and _end would be auto provided by ld if not 
+  * explicitly defined in ld script.
+  */
 	xorl %eax,%eax
 	movl $_edata,%edi
 	movl $_end,%ecx

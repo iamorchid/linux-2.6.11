@@ -2729,9 +2729,13 @@ need_resched_nonpreemptible:
 	  * PREEMPT_ACTIVE indicates that kernel preemption is happening.
 	  * preempt_schedule is the entry of process schedule for kernel preemption. It 
 	  * sets PREEMPT_ACTIVE before calling schedule and clears it afterwards. So for  
-	  * a process whose state is not TASK_RUNNING, it could be possible that before 
-	  * it's added some wait queue, kernel preemption just happens. And for such 
-	  * case, we should not move it out of the run queue. @Will
+	  * a process whose state is not TASK_RUNNING (e.g set to TASK_INTERRUPTIBLE or 
+	  * TASK_UNINTERRUPTIBLE) but still not added into some wait queue yet, if it's 
+	  * preempted and moved out of run queue, it would NEVER be scheduled again in 
+	  * the future as it's neither in run queue nor wait queue. --Will
+	  * So the normal way to put a process to sleep is: add the process to a wait 
+	  * queue first, change its state and then schedult it to move it out of run 
+	  * queue (see prepare_to_wait). --Will
 	  */
 	if (prev->state != TASK_RUNNING && !(preempt_count() & PREEMPT_ACTIVE)) {
 		switch_count = &prev->nvcsw;

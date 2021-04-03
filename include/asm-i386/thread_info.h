@@ -52,7 +52,9 @@ struct thread_info {
 
 #endif
 
+// This is used to indicate that preemption is happening.
 #define PREEMPT_ACTIVE		0x10000000
+
 #ifdef CONFIG_4KSTACKS
 #define THREAD_SIZE            (4096)
 #else

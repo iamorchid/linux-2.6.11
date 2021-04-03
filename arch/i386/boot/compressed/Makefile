@@ -7,6 +7,8 @@
 targets		:= vmlinux vmlinux.bin vmlinux.bin.gz head.o misc.o piggy.o
 EXTRA_AFLAGS	:= -traditional
 
+# IMAGE_OFFSET is defined in i386/boot/Makefile. For zImage, it's 0x1000 (4K)
+# and it's 0x100000 (1M) for bzImage.
 LDFLAGS_vmlinux := -Ttext $(IMAGE_OFFSET) -e startup_32
 
 $(obj)/vmlinux: $(obj)/head.o $(obj)/misc.o $(obj)/piggy.o FORCE

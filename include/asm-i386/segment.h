@@ -81,7 +81,9 @@
 #define GDT_SIZE (GDT_ENTRIES * 8)
 
 /* Simple and small GDT entries for booting only */
-
+// For segment register, the least significant 3 bits 
+// correspond to RPL. And the most significate 15 bits 
+// correspond to GDT index. --Will
 #define GDT_ENTRY_BOOT_CS		2
 #define __BOOT_CS	(GDT_ENTRY_BOOT_CS * 8)
 

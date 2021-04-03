@@ -59,7 +59,7 @@
 #define SIG2	0x5A5A
 
 INITSEG  = DEF_INITSEG		# 0x9000, we move boot here, out of the way
-SYSSEG   = DEF_SYSSEG		# 0x1000, system loaded at 0x10000 (65536).
+SYSSEG   = DEF_SYSSEG		# 0x1000, system loaded at 0x10000 for zImage.
 SETUPSEG = DEF_SETUPSEG		# 0x9020, this is the current segment
 				# ... and the former contents of CS
 
@@ -98,13 +98,18 @@ type_of_loader:	.byte	0		# = 0, old one (LILO, Loadlin,
 	
 # flags, unused bits must be zero (RFU) bit within loadflags
 loadflags:
+/* set during compling */
 LOADED_HIGH	= 1			# If set, the kernel is loaded high
+
+/* set by loader */
 CAN_USE_HEAP	= 0x80			# If set, the loader also has set
 					# heap_end_ptr to tell how much
 					# space behind setup.S can be used for
 					# heap purposes.
 					# Only the loader knows what is free
-#ifndef __BIG_KERNEL__
+
+/* This flag tells loader where the non-real-mode kernel should be loaded */
+#ifndef __BIG_KERNEL__                  
 		.byte	0
 #else
 		.byte	LOADED_HIGH
@@ -164,6 +169,9 @@ ramdisk_max:	.long (-__PAGE_OFFSET-(512 << 20)-1) & 0x7fffffff
 trampoline:	call	start_of_setup
 		.align 16
 					# The offset at this point is 0x240
+					# relative to segment 0x9000 or 0x40 
+					# relative to segment 0x9020 (which 
+					# is current CS).
 		.space	(0x7ff-0x240+1) # E820 & EDD space (ending at 0x7ff)
 # End of setup header #####################################################
 
@@ -597,12 +605,20 @@ rmodeswtch_end:
 # Now we move the system to its rightful place ... but we check if we have a
 # big-kernel. In that case we *must* not move it ...
 	testb	$LOADED_HIGH, %cs:loadflags
+
+	/* 
+	 * If $LOADED_HIGH & %cs:loadflags == 0, jump to do_move0. For zImage, 
+	 * loader would load the system to 0x10000 (see boot.txt) while the 
+	 * kernel is compiled to use offset 0x1000 (see i386/boot/Makefile).
+	 * --Will
+	 */
 	jz	do_move0			# .. then we have a normal low
 						# loaded zImage
 						# .. or else we have a high
 						# loaded bzImage
 	jmp	end_move			# ... and we skip moving
 
+	/* move the system from 0x1000 segment to 0x0100 segment */
 do_move0:
 	movw	$0x100, %ax			# start of destination segment
 	movw	%cs, %bp			# aka SETUPSEG
@@ -829,6 +845,12 @@ a20_done:
 #
 # Note that the short jump isn't strictly needed, although there are
 # reasons why it might be a good idea. It won't hurt in any case.
+# 
+# LMSW loads the machine status word (part of CR0) from the source 
+# operand. This instruction can be used to switch to Protected Mode; 
+# if so, it must be followed by an intrasegment jump to flush the 
+# instruction queue.
+#
 	movw	$1, %ax				# protected mode (PE) bit
 	lmsw	%ax				# This is it!
 	jmp	flush_instr
@@ -868,6 +890,11 @@ kernel_version:	.ascii	UTS_RELEASE
 
 # This is the default real mode switch routine.
 # to be called just before protected mode transition
+#
+# Whenever you send a byte to IO port 0x70, the high order bit tells the 
+# hardware whether to disable NMIs from reaching the CPU. If the bit is 
+# on, NMI is disabled.
+#
 default_switch:
 	cli					# no interrupts allowed !
 	movb	$0x80, %al			# disable NMI for bootup
@@ -963,6 +990,21 @@ gettime:
 	ret
 
 # Delay is needed after doing I/O
+#
+# I/O port 0x80 is traditionally used for POST Codes (POST = Power On 
+# Self Test). While the system is booting, the BIOS will output a series 
+# of debug codes to I/O port 0x80. These are indended for debugging a 
+# non-booting system.
+#
+# Some operating systems will use reads and writes to I/O port 0x80 as 
+# a delaying mechanism. If you need to wait a few microseconds for 
+# something to complete, it may be impractical to use full-blown 
+# sleep() or delay() timers, so performing a "dummy" read/write to 
+# a "safe" I/O address is a light-weight solution. Reads and writes 
+# to 0x80 are basically gauranteed to not adversely affect the 
+# operation of the system, so it is a good choice for such dummy 
+# operations.
+#
 delay:
 	outb	%al,$0x80
 	ret
@@ -981,7 +1023,7 @@ delay:
 #
 	.align 16
 gdt:
-	.fill GDT_ENTRY_BOOT_CS,8,0
+	.fill GDT_ENTRY_BOOT_CS,8,0		# .fill repeat, size, value
 
 	.word	0xFFFF				# 4Gb - (0x100000*0x1000 = 4Gb)
 	.word	0				# base address = 0
