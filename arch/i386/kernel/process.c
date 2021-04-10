@@ -300,6 +300,13 @@ int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
 
 	memset(&regs, 0, sizeof(regs));
 
+	// When the kernel thread is scheduled to run, it would run ret_from_fork. 
+	// And then iret instruction would reload cs, eip and eflags (thus function
+	// kernel_thread_helper would be run after iret). As the cs segment doesn't 
+	// change CPL, so no stack (namely ss and esp) would be reloated. Thus the 
+	// kernel mode stack would contnue to be used after iret (kernel mode stack
+	// is setup by do_fork). So we don't need to initialize reg.esp and reg.ess 
+	// here (which is used by user mode stack). --Will
 	regs.ebx = (unsigned long) fn;
 	regs.edx = (unsigned long) arg;
 
@@ -389,12 +396,20 @@ int copy_thread(int nr, unsigned long clone_flags, unsigned long esp,
 
 	childregs = ((struct pt_regs *) (THREAD_SIZE + (unsigned long) p->thread_info)) - 1;
 	*childregs = *regs;
+
+	// Return result of fork system call for child process. --Will
 	childregs->eax = 0;
+
+	// User-mode stack position
 	childregs->esp = esp;
 
+	// thread.esp0 is the kernel model stack and thread.esp is the kernel mode 
+	// stack position when child process is scheduled to run (in kernel mode 
+	// before returning to user mode). --Will
 	p->thread.esp = (unsigned long) childregs;
 	p->thread.esp0 = (unsigned long) (childregs+1);
 
+	// The code to be executed when child process is scheduled to run. --Will
 	p->thread.eip = (unsigned long) ret_from_fork;
 
 	savesegment(fs,p->thread.fs);

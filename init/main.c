@@ -479,6 +479,7 @@ asmlinkage void __init start_kernel(void)
 	}
 #endif
 	vfs_caches_init_early();
+
 	// When we reach here, we have called setup_memory and paging_init 
 	// in setup_arch. Basically setup_memory sets up the bootmem allocator 
 	// which is needed before we have buddy allocator. And paging_init 
@@ -490,6 +491,7 @@ asmlinkage void __init start_kernel(void)
 	// into zones' free area and release the page frames used by the bottmem 
 	// bitmap. @Will
 	mem_init();
+	
 	kmem_cache_init();
 	numa_policy_init();
 	if (late_time_init)

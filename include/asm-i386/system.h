@@ -12,6 +12,11 @@
 struct task_struct;	/* one of the stranger aspects of C forward declarations.. */
 extern struct task_struct * FASTCALL(__switch_to(struct task_struct *prev, struct task_struct *next));
 
+// If "call __switch_to" is used, it would always to return to label "1:".
+// However, "pushl next->thread.eip\n" "jmp __switch_to", it can designate 
+// the address the execution returns to after __switch_to completes (note 
+// that __switch_to is a C function and the "ret" instruction would be 
+// placed at the end). --Will
 #define switch_to(prev,next,last) do {					\
 	unsigned long esi,edi;						\
 	asm volatile("pushfl\n\t"					\

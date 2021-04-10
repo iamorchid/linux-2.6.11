@@ -851,6 +851,11 @@ static task_t *copy_process(unsigned long clone_flags,
 	copy_flags(clone_flags, p);
 	p->pid = pid;
 	retval = -EFAULT;
+
+	// Notet we can't set child_tidptr here as the execution is 
+	// the address space of parent. See schedule_tail (which is 
+	// called in ret_from_fork before child returns to user mode).
+	// --Will
 	if (clone_flags & CLONE_PARENT_SETTID)
 		if (put_user(p->pid, parent_tidptr))
 			goto bad_fork_cleanup;

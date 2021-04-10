@@ -438,6 +438,8 @@ void __init dodgy_tsc(void)
 }
 
 #ifdef CONFIG_X86_HT
+// For more details about how cpuid instruction works, just refer 
+// to https://en.wikipedia.org/wiki/CPUID. --Will
 void __init detect_ht(struct cpuinfo_x86 *c)
 {
 	u32 	eax, ebx, ecx, edx;
@@ -447,6 +449,9 @@ void __init detect_ht(struct cpuinfo_x86 *c)
 	if (!cpu_has(c, X86_FEATURE_HT))
 		return;
 
+	// We can view cpuid content through x86info utility. For 
+	// example, we can use "x86info -r" to view all supported 
+	// CPU levels and their register outputs. --Will
 	cpuid(1, &eax, &ebx, &ecx, &edx);
 	smp_num_siblings = (ebx & 0xff0000) >> 16;
 
@@ -461,6 +466,12 @@ void __init detect_ht(struct cpuinfo_x86 *c)
 			smp_num_siblings = 1;
 			return;
 		}
+
+		// The nearest power-of-2 integer that is not smaller than smp_num_siblings 
+		// is the number of unique initial APIC IDs reserved for addressing different 
+		// logical processors in a physical package. So if smp_num_siblings is 6, we 
+		// should use 8 for the number of APIC IDs reserved for each package. 
+		// --Will
 		tmp = smp_num_siblings;
 		while ((tmp & 1) == 0) {
 			tmp >>=1 ;
@@ -473,6 +484,10 @@ void __init detect_ht(struct cpuinfo_x86 *c)
 		}
 		if (index_lsb != index_msb )
 			index_msb++;
+		
+		// (ebx >> 24) & 0xFF corresponds to the logical APIC-ID while 
+		// index_msb is the number of logical processors in this physical 
+		// package. --Will
 		phys_proc_id[cpu] = phys_pkg_id((ebx >> 24) & 0xFF, index_msb);
 
 		printk(KERN_INFO  "CPU: Physical Processor ID: %d\n",

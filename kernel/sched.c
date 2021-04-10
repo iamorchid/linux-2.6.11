@@ -1360,6 +1360,10 @@ asmlinkage void schedule_tail(task_t *prev)
 {
 	finish_task_switch(prev);
 
+	// When this is called, the execution is in the address space 
+	// of child process (we can't perform the following operation
+	// in copy_process as it's in the address space of its parent).
+	// --Will
 	if (current->set_child_tid)
 		put_user(current->pid, current->set_child_tid);
 }

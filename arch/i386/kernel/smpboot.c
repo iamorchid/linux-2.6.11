@@ -59,7 +59,12 @@
 static int __initdata smp_b_stepping;
 
 /* Number of siblings per CPU package */
+// For a CPU package (or a physical processor) with 4 cores and 
+// each core with 2 hyper-threads, the total number of logical 
+// processors (or logic CPUs) are 8 (4 * 2). Namely, the number 
+// of siblings per CPU package is 8. --Will
 int smp_num_siblings = 1;
+
 int phys_proc_id[NR_CPUS]; /* Package ID of each logical CPU */
 EXPORT_SYMBOL(phys_proc_id);
 
@@ -130,7 +135,7 @@ static void __init smp_store_cpu_info(int id)
 	struct cpuinfo_x86 *c = cpu_data + id;
 
 	*c = boot_cpu_data;
-	if (id!=0)
+	if (id != 0)
 		identify_cpu(c);
 	/*
 	 * Mask B, Pentium, but not Pentium MMX
@@ -790,6 +795,8 @@ static int __init do_boot_cpu(int apicid)
 
 	store_NMI_vector(&nmi_high, &nmi_low);
 
+	// See https://wiki.osdev.org/Symmetric_Multiprocessing to understand 
+	// relevant AP processor startup logic. --Will
 	smpboot_setup_warm_reset_vector(start_eip);
 
 	/*

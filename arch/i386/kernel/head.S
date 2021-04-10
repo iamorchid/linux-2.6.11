@@ -188,6 +188,7 @@ ENTRY(startup_32_smp)
 	movl %cr0,%eax
 	orl $0x80000000,%eax
 	movl %eax,%cr0		/* ..and set paging (PG) bit */
+
 /*
  * The boot/compressed/head.S calls into the code by:
  *     ljmp $(__BOOT_CS), $0x100000
@@ -195,7 +196,7 @@ ENTRY(startup_32_smp)
  * corresponds to identity physical address though we've enabled paging (we 
  * are using identity PDE entry). After the following ljmp instruction, the 
  * linear address should match what we've defined in Makefile (namely using
- * text offset __PAGE_OFFSET).
+ * text offset __PAGE_OFFSET). --Will
  */
 	ljmp $__BOOT_CS,$1f	/* Clear prefetch and normalize %eip */
 1:
@@ -319,8 +320,9 @@ is386:	movl $2,%ecx		# set MP
  * Since we have enabled paging above, we can use the linear address driectly 
  * without offseting __PAGE_OFFSET. At the start of file, we performed lgdt 
  * using the following form because we didn't enable paging yet then.
- * lgdt boot_gdt_descr - __PAGE_OFFSET
+ * lgdt boot_gdt_descr - __PAGE_OFFSET.
  *
+ * The operand for lgdt/lidt corresponds to linear address.
  */
 	lgdt cpu_gdt_descr
 	lidt idt_descr

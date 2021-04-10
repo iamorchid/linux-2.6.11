@@ -423,10 +423,18 @@ struct tss_struct {
 struct thread_struct {
 /* cached TLS descriptors. */
 	struct desc_struct tls_array[GDT_ENTRY_TLS_ENTRIES];
+
+	// kernel mode stack (highest position)
 	unsigned long	esp0;
 	unsigned long	sysenter_cs;
+
+	// eip keeps the next instruction to run and esp keeps 
+	// the stack position (both in kernel mode) when the 
+	// process is scheduled to use CPU before returning to 
+	// user mode. --Will
 	unsigned long	eip;
 	unsigned long	esp;
+	
 	unsigned long	fs;
 	unsigned long	gs;
 /* Hardware debugging registers */

@@ -41,8 +41,16 @@
 .code16
 
 ENTRY(trampoline_data)
+
+/*
+ * The code here would be copied to somewhere aligned with page frame 
+ * in do_boot_cpu. And real-mode CS:IP (eip% would be 0) would be set 
+ * to the start of the code. --Will
+ */
 r_base = .
-	wbinvd			# Needed for NUMA-Q should be harmless for others
+	wbinvd			# Write Back and Invalidate Cache
+				# Needed for NUMA-Q should be harmless for others
+
 	mov	%cs, %ax	# Code and data in the same place
 	mov	%ax, %ds
 
