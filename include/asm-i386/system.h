@@ -17,6 +17,9 @@ extern struct task_struct * FASTCALL(__switch_to(struct task_struct *prev, struc
 // the address the execution returns to after __switch_to completes (note 
 // that __switch_to is a C function and the "ret" instruction would be 
 // placed at the end). --Will
+//
+// Looks ecx and ebx registers are not saved. Could it be used by prev task?
+//
 #define switch_to(prev,next,last) do {					\
 	unsigned long esi,edi;						\
 	asm volatile("pushfl\n\t"					\

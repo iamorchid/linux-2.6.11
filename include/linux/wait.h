@@ -2,7 +2,7 @@
 #define _LINUX_WAIT_H
 
 #define WNOHANG		0x00000001
-#define WUNTRACED	0x00000002
+#define WUNTRACED	0x00000002      /* stopped but not traced via ptrace */
 #define WSTOPPED	WUNTRACED
 #define WEXITED		0x00000004
 #define WCONTINUED	0x00000008

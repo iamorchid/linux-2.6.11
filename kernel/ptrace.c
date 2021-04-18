@@ -30,6 +30,7 @@ void __ptrace_link(task_t *child, task_t *new_parent)
 {
 	if (!list_empty(&child->ptrace_list))
 		BUG();
+	// The real-parent is tracing the child. --Will
 	if (child->parent == new_parent)
 		return;
 	list_add(&child->ptrace_list, &child->parent->ptrace_children);

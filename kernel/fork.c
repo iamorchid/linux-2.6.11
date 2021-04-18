@@ -154,7 +154,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	ti->task = tsk;
 
 	/* One for us, one for whoever does the "release_task()" (usually parent) */
-	atomic_set(&tsk->usage,2);
+	atomic_set(&tsk->usage, 2);
 	return tsk;
 }
 

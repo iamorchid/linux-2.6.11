@@ -75,6 +75,12 @@ repeat:
 	 * group, and the leader is zombie, then notify the
 	 * group leader's parent process. (if it wants notification.)
 	 */
+	 // The trace logic is a bit messy because the leader would notify 
+	 // the parent in do_exit when it's traced. However, here another 
+	 // notification would be performed again. And there is even a bug 
+	 // here as leader->exit_signal could be set to -1 in do_exit when 
+	 // it's traced and the tracer ignored the signal (the logic below 
+	 // doesn't allow leader->exit_signal to be -1). --Will
 	zap_leader = 0;
 	leader = p->group_leader;
 	if (leader != p && thread_group_empty(leader) && leader->exit_state == EXIT_ZOMBIE) {
@@ -741,11 +747,25 @@ static void exit_notify(struct task_struct *tsk)
 	 */
 	if (tsk->exit_signal != -1 && thread_group_empty(tsk)) {
 		int signal = tsk->parent == tsk->real_parent ? tsk->exit_signal : SIGCHLD;
+
+		// If tsk is traced and the tracer is not interested in the 
+		// signal (namely the tracer's signal hander of SIGCHLD is 
+		// set to SIG_IGN. Note the handler is SIG_DFL by default), 
+		// tsk->exit_signal would be set -1. However, the tsk won't be 
+		// released as tsk->ptrace is still not 0 (see logic below). 
+		// If the tracer doesn't call wait4(), tsk remains in memory 
+		// until tracer exits (see ptrace_dead collecting above).
+		// Is this a bug? Or the ZOMBIE should always be reaped by 
+		// tracer through wait4()? --Will
 		do_notify_parent(tsk, signal);
 	} else if (tsk->ptrace) {
 		do_notify_parent(tsk, SIGCHLD);
 	}
 
+	// If exit_signal is -1, it means that we can release the resources 
+	// automatically without parent wait4()-ing us. However, if we are 
+	// traced (and the tracer is not in progress of exit), the tracer 
+	// could be interested in our state change. --Will
 	state = EXIT_ZOMBIE;
 	if (tsk->exit_signal == -1 &&
 	    (likely(tsk->ptrace == 0) ||
@@ -770,6 +790,14 @@ static void exit_notify(struct task_struct *tsk)
 
 	/* If the process is dead, release it - nobody will wait for it */
 	if (state == EXIT_DEAD)
+		// See logic in dup_task_struct (used by copy_process).
+		// The task usage is initialized to 2 and release_task would 
+		// decrease the usage and release other resources. However, 
+		// the task struct and its kernel stack MUST be kept as 
+		// its context is still in use (that's why the initial task 
+		// usage is 2). The remained resources would be released 
+		// after it's scheduled to the next process (see more details 
+		// about this in schedule). --Will
 		release_task(tsk);
 
 	/* PF_DEAD causes final put_task_struct after we schedule. */
@@ -922,6 +950,11 @@ static int eligible_child(pid_t pid, int options, task_t *p)
 	 * Do not consider detached threads that are
 	 * not ptraced:
 	 */
+	 // "detached" means that a thread can release all its resouces 
+	 // automatically when it exits without parent wait4()-ing it (
+	 // unless it's traced by a debugger). And p->exit_signal == -1 
+	 // is used to indicate that a thread is detached (nameyl signal 
+	 // notification won't be generated for its parent). --Will
 	if (p->exit_signal == -1 && !p->ptrace)
 		return 0;
 
@@ -1016,6 +1049,9 @@ static int wait_task_zombie(task_t *p, int noreap,
 		BUG_ON(state != EXIT_DEAD);
 		return 0;
 	}
+
+	// Normally such process won't be picked by eligible_child. Not sure 
+	// how this could happen. --Will
 	if (unlikely(p->exit_signal == -1 && p->ptrace == 0)) {
 		/*
 		 * This can only happen in a race with a ptraced thread
@@ -1096,7 +1132,6 @@ static int wait_task_zombie(task_t *p, int noreap,
 	if (!retval && infop)
 		retval = put_user(p->uid, &infop->si_uid);
 	if (retval) {
-		// TODO: is this safe?
 		p->exit_state = EXIT_ZOMBIE;
 		return retval;
 	}
@@ -1106,7 +1141,6 @@ static int wait_task_zombie(task_t *p, int noreap,
 		/* Double-check with lock held.  */
 		if (p->real_parent != p->parent) {
 			__ptrace_unlink(p);
-			// TODO: is this safe?
 			p->exit_state = EXIT_ZOMBIE;
 			/*
 			 * If this is not a detached task, notify the parent.
@@ -1294,11 +1328,14 @@ static int wait_task_continued(task_t *p, int noreap,
 	return retval;
 }
 
-
 static inline int my_ptrace_child(struct task_struct *p)
 {
 	if (!(p->ptrace & PT_PTRACED))
 		return 0;
+
+	// If p is traced (see above) and it's not attached, it means the 
+	// tracer is the real-parent (thus p->parent == p->real_parent). 
+	// See ptrace_attach about more details about this. --Will
 	if (!(p->ptrace & PT_ATTACHED))
 		return 1;
 	/*
@@ -1333,6 +1370,8 @@ repeat:
 		struct list_head *_p;
 		int ret;
 
+		// children include the processess created and traced by 
+		// current (see __ptrace_link). --Will
 		list_for_each(_p,&tsk->children) {
 			p = list_entry(_p,struct task_struct,sibling);
 
@@ -1341,6 +1380,10 @@ repeat:
 				continue;
 
 			switch (p->state) {
+			// If current is the tracer, it is always notified of TASK_TRACED 
+			// and TASK_STOPPED change from its child. Otherwise, current is 
+			// the real parent and it would be notified of TASK_STOPPED from 
+			// child if WUNTRACED is explicitly specified. --Will
 			case TASK_TRACED:
 				if (!my_ptrace_child(p))
 					continue;
@@ -1402,6 +1445,11 @@ check_continued:
 			}
 		}
 		if (!flag) {
+			// ptrace_children are the those processes created by current 
+			// but traced by other debugger. Currently, the state changes 
+			// of these children are handled by the debugger. However, when 
+			// the debugger stops the tracing, it's our turn to do this.
+			// --Will
 			list_for_each(_p, &tsk->ptrace_children) {
 				p = list_entry(_p, struct task_struct,
 						ptrace_list);

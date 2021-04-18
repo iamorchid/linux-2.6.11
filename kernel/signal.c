@@ -699,6 +699,8 @@ static void handle_stop_signal(int sig, struct task_struct *p)
 			p->signal->flags = SIGNAL_STOP_CONTINUED;
 			spin_unlock(&p->sighand->siglock);
 			if (p->ptrace & PT_PTRACED)
+				// Could it be possible that the process p has already 
+				// notify its parent in do_signal_stop? --Will
 				do_notify_parent_cldstop(p, p->parent,
 							 CLD_STOPPED);
 			else
@@ -747,6 +749,9 @@ static void handle_stop_signal(int sig, struct task_struct *p)
 			p->signal->group_exit_code = 0;
 			spin_unlock(&p->sighand->siglock);
 			if (p->ptrace & PT_PTRACED)
+				// every traced process in the thread group would 
+				// report CLD_STOPPED to the tracer. But here only 
+				// the process p report CLD_CONTINUED? --Will
 				do_notify_parent_cldstop(p, p->parent,
 							 CLD_CONTINUED);
 			else
@@ -1455,6 +1460,10 @@ void do_notify_parent(struct task_struct *tsk, int sig)
  	/* do_notify_parent_cldstop should have been called instead.  */
  	BUG_ON(tsk->state & (TASK_STOPPED|TASK_TRACED));
 
+	// If the task is not traced, it must be the leader of a thread 
+	// group with all other processes in the same thread group already 
+	// gone. Thus the real-parent only wants notification when all 
+	// processes in the thread group of its child has died. --Will
 	BUG_ON(!tsk->ptrace &&
 	       (tsk->group_leader != tsk || !thread_group_empty(tsk)));
 
@@ -1581,8 +1590,17 @@ static void ptrace_stop(int exit_code, int nostop_code, siginfo_t *info)
 	spin_unlock_irq(&current->sighand->siglock);
 	read_lock(&tasklist_lock);
 	if (likely(current->ptrace & PT_PTRACED) &&
+	    // if (current->ptrace & PT_ATTACHED) is not 0, it means the current 
+	    // process is traced by a dubugger (namely, not current's real-parent). 
+	    // However, if also current->parent == current->real_parent, it means 
+	    // the debugger has gone away (and current's parent is restored to real 
+	    // parent). --Will
 	    likely(current->parent != current->real_parent ||
 		   !(current->ptrace & PT_ATTACHED)) &&
+	    // If current->parent->signal == current->signal, it means another 
+	    // process in the same thread group is tracing the current process. 
+	    // And this signal is only notified if the thread group doesn't 
+	    // exist. --Will
 	    (likely(current->parent->signal != current->signal) ||
 	     !unlikely(current->signal->flags & SIGNAL_GROUP_EXIT))) {
 		do_notify_parent_cldstop(current, current->parent,
