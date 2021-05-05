@@ -414,6 +414,8 @@ int page_referenced(struct page *page, int is_locked, int ignore_token)
 			if (page->mapping)
 				referenced += page_referenced_file(page,
 								ignore_token);
+			// page is locked without blocking using TestSetPageLocked
+			// above. Here unlock the page. --Will
 			unlock_page(page);
 		}
 	}

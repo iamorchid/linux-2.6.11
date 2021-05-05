@@ -568,8 +568,8 @@ handle_signal(unsigned long sig, siginfo_t *info, struct k_sigaction *ka,
 
 	if (!(ka->sa.sa_flags & SA_NODEFER)) {
 		spin_lock_irq(&current->sighand->siglock);
-		sigorsets(&current->blocked,&current->blocked,&ka->sa.sa_mask);
-		sigaddset(&current->blocked,sig);
+		sigorsets(&current->blocked, &current->blocked, &ka->sa.sa_mask);
+		sigaddset(&current->blocked, sig);
 		recalc_sigpending();
 		spin_unlock_irq(&current->sighand->siglock);
 	}
@@ -592,7 +592,10 @@ int fastcall do_signal(struct pt_regs *regs, sigset_t *oldset)
 	 * kernel mode. Just return without doing anything
 	 * if so.
 	 */
-	 // We only deliver the signal when the execution path
+	 // We only deliver the signal when the execution path 
+	 // goes back to user mode (If regs->xcs is 0, it means 
+	 // an interrupt happens while current is running in 
+	 // kernel mode with pending signals). --Will 
 	if ((regs->xcs & 3) != 3)
 		return 1;
 

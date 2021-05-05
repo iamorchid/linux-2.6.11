@@ -691,6 +691,8 @@ int zone_watermark_ok(struct zone *z, int order, unsigned long mark,
 /*
  * This is the 'heart' of the zoned buddy allocator.
  */
+// The page_count(page) would be 1 (or the _count field would be 0) for 
+// returned page. See more details in prep_new_page. --Will
 struct page * fastcall
 __alloc_pages(unsigned int gfp_mask, unsigned int order,
 		struct zonelist *zonelist)

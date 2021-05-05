@@ -366,7 +366,12 @@ struct block_device {
 	void *			bd_holder;
 	int			bd_holders;
 	struct block_device *	bd_contains;
+
+	// The block size here has no relation with underlying hardware (or 
+	// disk). It can be re-initialized by the concrete file system (see 
+	// details in sb_set_blocksize). --Will
 	unsigned		bd_block_size;
+	
 	struct hd_struct *	bd_part;
 	/* number of times partitions within this device have been opened. */
 	unsigned		bd_part_count;
@@ -1014,11 +1019,21 @@ struct super_operations {
 };
 
 /* Inode state bits.  Protected by inode_lock. */
+// 
+// I_DIRTY_SYNC indicates that inode attributes has been updated (such as 
+// modification time). However, such update lost won't cause data integrity 
+// issue. And I_DIRTY_DATASYNC means there are attribute updates that have 
+// impact on data integrity (such as file size change). I_DIRTY_PAGES means 
+// that inode data page(s) are dirty. --Will
+//
 #define I_DIRTY_SYNC		1 /* Not dirty enough for O_DATASYNC */
 #define I_DIRTY_DATASYNC	2 /* Data-related inode changes pending */
 #define I_DIRTY_PAGES		4 /* Data-related inode changes pending */
+
+// I_LOCK is used when inode is just created or under sync. --Will
 #define __I_LOCK		3
 #define I_LOCK			(1 << __I_LOCK)
+
 #define I_FREEING		16
 #define I_CLEAR			32
 #define I_NEW			64

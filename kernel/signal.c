@@ -1590,11 +1590,13 @@ static void ptrace_stop(int exit_code, int nostop_code, siginfo_t *info)
 	spin_unlock_irq(&current->sighand->siglock);
 	read_lock(&tasklist_lock);
 	if (likely(current->ptrace & PT_PTRACED) &&
-	    // if (current->ptrace & PT_ATTACHED) is not 0, it means the current 
-	    // process is traced by a dubugger (namely, not current's real-parent). 
-	    // However, if also current->parent == current->real_parent, it means 
-	    // the debugger has gone away (and current's parent is restored to real 
-	    // parent). --Will
+	    // If current->parent != current->real_parent, it means the tracer 
+	    // is not its real-parent. If current->parent == current->real_parent 
+	    // and (current->ptrace & PT_ATTACHED) is 0, it means the tracer 
+	    // is the real-parent (see ptrace_attach). Otherwise, it could be 
+	    // a race condition that the tracer has gone (parent restored to its 
+	    // real-parent but ptrace flags still not cleared).
+	    // --Will
 	    likely(current->parent != current->real_parent ||
 		   !(current->ptrace & PT_ATTACHED)) &&
 	    // If current->parent->signal == current->signal, it means another 
@@ -1845,6 +1847,9 @@ relock:
 		if (!signr)
 			break; /* will return 0 */
 
+		// The tracer can intercept all signals (excluding SIGKILL) to 
+		// tracee. And the tracer can cancel or change the original 
+		// signal as it likes. --Will
 		if ((current->ptrace & PT_PTRACED) && signr != SIGKILL) {
 			ptrace_signal_deliver(regs, cookie);
 

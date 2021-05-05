@@ -112,6 +112,9 @@ static int __pdflush(struct pdflush_work *my_work)
 
 		spin_lock_irq(&pdflush_lock);
 		if (!list_empty(&my_work->list)) {
+			// Normally this should not happen as pdflush should 
+			// only be waken after its pdflush_work is removed from
+			// pdflush_list. --Will
 			printk("pdflush: bogus wakeup!\n");
 			my_work->fn = NULL;
 			continue;
@@ -145,9 +148,12 @@ static int __pdflush(struct pdflush_work *my_work)
 		 * thread slept?
 		 */
 		if (list_empty(&pdflush_list))
+			// all pdflush threads are busy with work. --Will
 			continue;
+
 		if (nr_pdflush_threads <= MIN_PDFLUSH_THREADS)
 			continue;
+		
 		pdf = list_entry(pdflush_list.prev, struct pdflush_work, list);
 		if (jiffies - pdf->when_i_went_to_sleep > 1 * HZ) {
 			/* Limit exit rate */

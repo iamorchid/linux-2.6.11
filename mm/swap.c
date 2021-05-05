@@ -139,6 +139,10 @@ EXPORT_SYMBOL(mark_page_accessed);
 static DEFINE_PER_CPU(struct pagevec, lru_add_pvecs) = { 0, };
 static DEFINE_PER_CPU(struct pagevec, lru_add_active_pvecs) = { 0, };
 
+// The logic here could be a bit confusing. Acutally, adding the page to 
+// lru list won't increase its reference count (though page_cache_get 
+// does the increase temporarily, __pagevec_lru_add does the decrease).
+// --Will
 void fastcall lru_cache_add(struct page *page)
 {
 	struct pagevec *pvec = &get_cpu_var(lru_add_pvecs);
@@ -189,6 +193,7 @@ void fastcall __page_cache_release(struct page *page)
 	if (page_count(page) != 0)
 		page = NULL;
 	spin_unlock_irqrestore(&zone->lru_lock, flags);
+
 	if (page)
 		free_hot_page(page);
 }

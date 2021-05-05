@@ -564,15 +564,20 @@ static void shrink_cache(struct zone *zone, struct scan_control *sc)
 			if (!TestClearPageLRU(page))
 				BUG();
 			list_del(&page->lru);
+
+			// put_page decreases the page ref count first. And if its ref
+			// count is 0, it obtains lru_lock and removes it from lru list.
+			// So if get_page_testone is true, it means the page is being 
+			// free'ed elsewhere (and waiting for lru_lock). Also note that 
+			// putting a page into the lru list doesn't increase its ref 
+			// count. --Will
 			if (get_page_testone(page)) {
-				/*
-				 * It is being freed elsewhere
-				 */
 				__put_page(page);
 				SetPageLRU(page);
 				list_add(&page->lru, &zone->inactive_list);
 				continue;
 			}
+			
 			list_add(&page->lru, &page_list);
 			nr_taken++;
 		}

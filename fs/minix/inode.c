@@ -323,7 +323,7 @@ static int minix_writepage(struct page *page, struct writeback_control *wbc)
 }
 static int minix_readpage(struct file *file, struct page *page)
 {
-	return block_read_full_page(page,minix_get_block);
+	return block_read_full_page(page, minix_get_block);
 }
 static int minix_prepare_write(struct file *file, struct page *page, unsigned from, unsigned to)
 {

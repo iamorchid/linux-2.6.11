@@ -166,6 +166,9 @@ static int will_become_orphaned_pgrp(int pgrp, task_t *ignored_task)
 	do_each_task_pid(pgrp, PIDTYPE_PGID, p) {
 		if (p == ignored_task
 				|| p->exit_state
+				// p->real_parent->pid == 1 indicates that this is a 
+				// orphaned process (namely, its original real parent 
+				// has died). --Will
 				|| p->real_parent->pid == 1)
 			continue;
 		if (process_group(p->real_parent) != pgrp
@@ -707,7 +710,16 @@ static void exit_notify(struct task_struct *tsk)
 	 * and we were the only connection outside, so our pgrp
 	 * is about to become orphaned.
 	 */
-	 
+	// The POSIX standard specifies that a process group is not
+	// orphaned as long as there is a process in the group that 
+	// has a parent in a different process group but in the same 
+	// session. --Will
+	//
+	// For child processes created by us, they are in different 
+	// process group. Should they also be considered? The relevant 
+	// logic is handled in forget_original_parent (which invokes 
+	// reparent_thread). --Will
+	//
 	t = tsk->real_parent;
 	
 	if ((process_group(t) != process_group(tsk)) &&
@@ -1214,6 +1226,8 @@ static int wait_task_stopped(task_t *p, int delayed_group_leader, int noreap,
 	 * it.  It must also be done with the write lock held to prevent a
 	 * race with the EXIT_ZOMBIE case.
 	 */
+	 // When a task goes to TASK_STOPPED, its exit_code would be set to 
+	 // the signal number that causes this. --Will
 	exit_code = xchg(&p->exit_code, 0);
 	if (unlikely(p->exit_state)) {
 		/*

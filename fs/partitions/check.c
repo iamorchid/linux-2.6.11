@@ -356,6 +356,7 @@ void register_disk(struct gendisk *disk)
 	if (!bdev)
 		return;
 
+	// force the scan of partitions. --Will
 	bdev->bd_invalidated = 1;
 	if (blkdev_get(bdev, FMODE_READ, 0) < 0)
 		return;

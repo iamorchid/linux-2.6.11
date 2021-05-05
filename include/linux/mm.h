@@ -231,7 +231,7 @@ struct page {
 	unsigned long private;		/* Mapping-private opaque data:
 					 * usually used for buffer_heads
 					 * if PagePrivate set; used for
-					 * swp_entry_t if PageSwapCache
+					 * swp_entry_t if PageSwapCache set.
 					 * When page is free, this indicates
 					 * order in the buddy system.
 					 */

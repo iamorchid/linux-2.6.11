@@ -1388,6 +1388,11 @@ task_t * context_switch(runqueue_t *rq, task_t *prev, task_t *next)
 	if (unlikely(!prev->mm)) {
 		prev->active_mm = NULL;
 		WARN_ON(rq->prev_mm);
+
+		// We can't release the oldmm for now as the kernel thread is 
+		// currently running in its context (the  kernel thread could 
+		// be the final user). We leave it to the next task to drop the 
+		// reference. --Will
 		rq->prev_mm = oldmm;
 	}
 

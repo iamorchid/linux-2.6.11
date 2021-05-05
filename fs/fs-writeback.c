@@ -172,6 +172,9 @@ __sync_single_inode(struct inode *inode, struct writeback_control *wbc)
 
 	/* Don't write the inode if only I_DIRTY_PAGES was set */
 	if (dirty & (I_DIRTY_SYNC | I_DIRTY_DATASYNC)) {
+		// Some fs would block until the inode attributes (or meta) are 
+		// sync'ed to disk (such as ex2). However, some fs would just 
+		// mark corresponding buffer head as dirty (minix). --Will
 		int err = write_inode(inode, wait);
 		if (ret == 0)
 			ret = err;
@@ -317,6 +320,7 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 
 		if (bdi->memory_backed) {
 			list_move(&inode->i_list, &sb->s_dirty);
+			
 			if (sb == blockdev_superblock) {
 				/*
 				 * Dirty memory-backed blockdev: the ramdisk
@@ -324,18 +328,28 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 				 */
 				continue;
 			}
+			
 			/*
 			 * Dirty memory-backed inode against a filesystem other
 			 * than the kernel-internal bdev filesystem.  Skip the
 			 * entire superblock.
 			 */
+			// ram based file system like ramfs. --Will
 			break;
 		}
 
 		if (wbc->nonblocking && bdi_write_congested(bdi)) {
 			wbc->encountered_congestion = 1;
+
 			if (sb != blockdev_superblock)
+				// For normal fs, if the backing device is congested,
+				// It's pointless to scan other nodes under the same fs. 
+				// So we break here. --Will
 				break;		/* Skip a congested fs */
+
+			// For bdev filesystem, each node corresponds to a 
+			// block device file. So if one device is congested,
+			// we can still continue with others. --Will
 			list_move(&inode->i_list, &sb->s_dirty);
 			continue;		/* Skip a congested blockdev */
 		}
@@ -644,6 +658,11 @@ int generic_osync_inode(struct inode *inode, struct address_space *mapping, int 
 		need_write_inode_now = 1;
 	spin_unlock(&inode_lock);
 
+	// If another code path is flushing the dirt data, it would set 
+	// I_LOCK and then clear I_DIRTY in the inode->i_state. So for 
+	// inode sync here, if we see I_DIRTY_DATASYNC, we do the sync 
+	// right now. Otherwise, we wait the sync to complete if the 
+	// inode is under I_LOCK state. --Will
 	if (need_write_inode_now) {
 		err2 = write_inode_now(inode, 1);
 		if (!err)

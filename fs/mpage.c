@@ -308,8 +308,8 @@ alloc_new:
 	}
 
 	// When boundary is set, it means get_block need I/O for indirect blocks.
-	// Sicne the indirect blocks could be adjacent or near to previous  direct 
-	// blocks. So we read the direct blocks first to move the  magnetic head 
+	// Sicne the indirect blocks could be adjacent or near to previous direct 
+	// blocks. So we read the direct blocks first to move the magnetic head 
 	// close to indirect blocks. @Will
 	if (buffer_boundary(&bh) || (first_hole != blocks_per_page))
 		bio = mpage_bio_submit(READ, bio);
@@ -698,6 +698,11 @@ retry:
 			if (wbc->sync_mode != WB_SYNC_NONE)
 				wait_on_page_writeback(page);
 
+			// For clear_page_dirty_for_io, it just clears the PG_dirty and we 
+			// still leave the page tagged as dirty in the radix tree. However, 
+			// writepage would run set_page_writeback() or set_page_dirty() at 
+			// which stage we bring the page's dirty flag and radix-tree dirty 
+			// tag back into sync. --Will
 			if (PageWriteback(page) ||
 					!clear_page_dirty_for_io(page)) {
 				unlock_page(page);
