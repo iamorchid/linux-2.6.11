@@ -607,9 +607,11 @@ static inline void follow_dotdot(struct vfsmount **mnt, struct dentry **dentry)
 		}
 		read_unlock(&current->fs->lock);
 		spin_lock(&dcache_lock);
+		
 		// case #1:
-		// dentry is not the root of a mount point, which means it won't  hide  
-		// any other dentry. So we can get its parent directly. @Will
+		// dentry is not the root of a mount point, which means 
+		// it won't hide any other dentry. So we can get its 
+		// parent directly. --Will
 		if (*dentry != (*mnt)->mnt_root) {
 			*dentry = dget((*dentry)->d_parent);
 			spin_unlock(&dcache_lock);
@@ -618,21 +620,23 @@ static inline void follow_dotdot(struct vfsmount **mnt, struct dentry **dentry)
 		}
 		spin_unlock(&dcache_lock);
 		spin_lock(&vfsmount_lock);
+		
 		// case #2:
-		// dentry is the root of root mount point. We just return it. @Will
+		// The mount's parent is itself, which means the mount is 
+		// not mounted on other mount point. --Will
 		parent = (*mnt)->mnt_parent;
 		if (parent == *mnt) {
 			spin_unlock(&vfsmount_lock);
 			break;
 		}
+		
 		// case #3:
-		// dentry is the root of a non-root mount point, which dentry must 
-		// hide another dentry (namely mnt->mnt_mountpoint). And we 
-		// have to recursively find the hiden dentry from root mount point. 
-		// @Will
+		// The mount is mounted on other mount point. Here we inc 
+		// the parent mount ref before releasing the lock. --Will
 		mntget(parent);
 		*dentry = dget((*mnt)->mnt_mountpoint);
 		spin_unlock(&vfsmount_lock);
+		
 		dput(old);
 		mntput(*mnt);
 		*mnt = parent;
@@ -774,7 +778,8 @@ int fastcall link_path_walk(const char * name, struct nameidata *nd)
 		follow_mount(&next.mnt, &next.dentry);
 
 		// Check if the dentry is negative (namely it has no i_node 
-		// associated, i.e. its inode/file is deleted). @Will
+		// associated, i.e. the dentry has no inode info in fs or 
+		// its inode has been deleted). @Will
 		err = -ENOENT;
 		inode = next.dentry->d_inode;
 		if (!inode)
@@ -1177,7 +1182,7 @@ static inline int may_create(struct inode *dir, struct dentry *child,
 		return -EEXIST;
 	if (IS_DEADDIR(dir))
 		return -ENOENT;
-	return permission(dir,MAY_WRITE | MAY_EXEC, nd);
+	return permission(dir, MAY_WRITE | MAY_EXEC, nd);
 }
 
 /* 
@@ -1363,6 +1368,15 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
  * for symlinks (where the permissions are checked later).
  * SMP-safe
  */
+//
+// The following operations are valid though /tmp/new doesn't exist 
+// (but /tmp/test/). Understand how this works here (--Will):
+// ln -s /tmp/new /tmp/test/new_link
+// echo 'hello' > /tmp/test/new_link
+//
+// why does open("/tmp/test/new_link", O_RDONLY|O_NOFOLLOW) return ELOOP?
+// may_open returns ELOOP for this case.
+// 
 int open_namei(const char * pathname, int flag, int mode, struct nameidata *nd)
 {
 	int acc_mode, error = 0;
@@ -1394,6 +1408,9 @@ int open_namei(const char * pathname, int flag, int mode, struct nameidata *nd)
 	/*
 	 * Create - we need to know the parent.
 	 */
+	// For create, we don't add flag LOOKUP_FOLLOW here (lookup_flags auto adds 
+	// it). Thus if the last component is a symbolic link, path_lookup would not 
+	// follow it. --Will
 	error = path_lookup(pathname, LOOKUP_PARENT|LOOKUP_OPEN|LOOKUP_CREATE, nd);
 	if (error)
 		return error;
@@ -1440,14 +1457,14 @@ do_last:
 	 */
 	up(&dir->d_inode->i_sem);
 
-    // O_EXCL: ensure that this call creates the file. @Will
+	// O_EXCL: ensure that this call creates the file. @Will
 	error = -EEXIST;
 	if (flag & O_EXCL)
 		goto exit_dput;
 
-    // We can create bind mount for a file like:
-    // "mount --bind file1 file2"
-    // @Will
+	// We can create bind mount for a file like:
+	// "mount --bind file1 file2"
+	// @Will
 	if (d_mountpoint(dentry)) {
 		error = -ELOOP;
 		if (flag & O_NOFOLLOW)
@@ -1457,6 +1474,8 @@ do_last:
 	error = -ENOENT;
 	if (!dentry->d_inode)
 		goto exit_dput;
+
+	// The component is a symbolic link. --Will
 	if (dentry->d_inode->i_op && dentry->d_inode->i_op->follow_link)
 		goto do_link;
 
@@ -1543,8 +1562,11 @@ struct dentry *lookup_create(struct nameidata *nd, int is_dir)
 	dentry = lookup_hash(&nd->last, nd->dentry);
 	if (IS_ERR(dentry))
 		goto fail;
-	// if nd->last.name[nd->last.len] is not 0, nd-last is not last 
-	// component of a path. @Will
+	// If is_dir is 0, it means we are looking up or creating a dentry 
+	// for regular file. For this case, if the last component of the path 
+	// corresponds to a dir (namely nd->last.name[nd->last.len] is '/'), 
+	// the dir MUST exist in fs (namely dentry->d_inod is null). And the 
+	// caller can create a regular file under this dir later. --Will
 	if (!is_dir && nd->last.name[nd->last.len] && !dentry->d_inode)
 		goto enoent;
 	return dentry;
@@ -1898,6 +1920,10 @@ int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname, i
 	return error;
 }
 
+// Understand differences of the following cases using strace (--Will):
+// a) ln -s /tmp/current_file /tmp/test/         
+// b) ln -s /tmp/current_file /tmp/test/         
+// c) ln -s /tmp/current_file /tmp/test/mylink
 asmlinkage long sys_symlink(const char __user * oldname, const char __user * newname)
 {
 	int error = 0;

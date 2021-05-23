@@ -1637,7 +1637,7 @@ static void __init free_area_init_core(struct pglist_data *pgdat,
 			pcp->count = 0;
 			pcp->low = 0;
 			pcp->high = 2 * batch;
-			pcp->batch = 1 * batch;
+			pcp->batch = 1 * batch;init_per_zone_pages_min
 			INIT_LIST_HEAD(&pcp->list);
 		}
 		printk(KERN_DEBUG "  %s zone: %lu pages, LIFO batch:%lu\n",

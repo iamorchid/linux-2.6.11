@@ -2093,9 +2093,11 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	if (!page_has_buffers(page))
 		create_empty_buffers(page, blocksize, 0);
 	head = page_buffers(page);
-
 	iblock = (sector_t)page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+
+	// inode data's end block number (exclusive)
 	lblock = (i_size_read(inode)+blocksize-1) >> inode->i_blkbits;
+	
 	bh = head;
 	nr = 0;
 	i = 0;
@@ -2110,7 +2112,8 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 				if (get_block(inode, iblock, bh, 0))
 					SetPageError(page);
 			}
-			// current block could correspond to a hole @Will
+			// current block could correspond to a hole if iblock < lblock.
+			// Or it's out of inode data range if iblock >= lblock. --Will
 			if (!buffer_mapped(bh)) {
 				void *kaddr = kmap_atomic(page, KM_USER0);
 				memset(kaddr + i * blocksize, 0, blocksize);

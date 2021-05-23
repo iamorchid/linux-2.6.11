@@ -615,6 +615,7 @@ static int graft_tree(struct vfsmount *mnt, struct nameidata *nd)
 		attach_mnt(mnt, nd);
 		list_add_tail(&head, &mnt->mnt_list);
 		list_splice(&head, current->namespace->list.prev);
+		// Which part is responsible for the ref count here ?
 		mntget(mnt);
 		err = 0;
 	}

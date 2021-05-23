@@ -152,6 +152,8 @@ static int minix_mkdir(struct inode * dir, struct dentry *dentry, int mode)
 	if (dir->i_nlink >= minix_sb(dir->i_sb)->s_link_max)
 		goto out;
 
+	// We increase parent links as child directory references 
+	// us by .. in its entries.
 	inc_count(dir);
 
 	inode = minix_new_inode(dir, &err);
@@ -163,6 +165,8 @@ static int minix_mkdir(struct inode * dir, struct dentry *dentry, int mode)
 		inode->i_mode |= S_ISGID;
 	minix_set_inode(inode, 0);
 
+	// directory inode has initial 2 links: one for dentry 
+	// name in parent and one for . in itself.
 	inc_count(inode);
 
 	err = minix_make_empty(inode, dir);

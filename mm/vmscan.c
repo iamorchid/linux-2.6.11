@@ -402,6 +402,9 @@ static int shrink_list(struct list_head *page_list, struct scan_control *sc)
 		 * The page is mapped into the page tables of one or more
 		 * processes. Try to unmap it here.
 		 */
+		// We can only perform the unmap unless we can save the 
+		// content of the page frame to some external file (namely 
+		// address_space variable mapping MUST be defined).
 		if (page_mapped(page) && mapping) {
 			switch (try_to_unmap(page)) {
 			case SWAP_FAIL:

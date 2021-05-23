@@ -1707,6 +1707,11 @@ static int do_swap_page(struct mm_struct * mm,
 			 * Back out if somebody else faulted in this pte while
 			 * we released the page table lock.
 			 */
+			// This happens under two cases:
+			// a) OOM (no enough memory to allocate a new page)
+			// b) Somebody else swapped in the page and free'ed 
+			//    the swap entry.
+			// Here we need to identify these two cases. --Will
 			spin_lock(&mm->page_table_lock);
 			page_table = pte_offset_map(pmd, address);
 			if (likely(pte_same(*page_table, orig_pte)))
@@ -1725,6 +1730,9 @@ static int do_swap_page(struct mm_struct * mm,
 	}
 
 	mark_page_accessed(page);
+
+	// This blocks if the swap data reading is still in progress.
+	// --Will
 	lock_page(page);
 
 	/*
@@ -1744,8 +1752,14 @@ static int do_swap_page(struct mm_struct * mm,
 
 	/* The page isn't present yet, go ahead with the fault. */
 		
-	swap_free(entry);
+	swap_free(entry); // current process doesn't reference the 
+	                  // swap entry any more.
 	if (vm_swap_full())
+		// If swap is full and current swap entry is only 
+		// referenced by swap cache, we free this swap entry 
+		// and remove the page from the swap cache (thus 
+		// the page would only be referenced by the aonn 
+		// mapping). --Will
 		remove_exclusive_swap_page(page);
 
 	mm->rss++;
@@ -1802,6 +1816,9 @@ do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 
 		if (unlikely(anon_vma_prepare(vma)))
 			goto no_mem;
+
+		// page_count(page) of returned page is one if 
+		// it's not null. --Will
 		page = alloc_zeroed_user_highpage(vma, addr);
 		if (!page)
 			goto no_mem;

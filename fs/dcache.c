@@ -371,7 +371,11 @@ static inline void prune_one_dentry(struct dentry * dentry)
 	__d_drop(dentry);
 	list_del(&dentry->d_child);
 	dentry_stat.nr_dentry--;	/* For d_free, below */
+
+	// Release the dentry's inode. Called with dcache_lock 
+	// and per dentry lock held, drops both.
 	dentry_iput(dentry);
+	
 	parent = dentry->d_parent;
 	d_free(dentry);
 	if (parent != dentry)
@@ -1182,11 +1186,22 @@ void d_delete(struct dentry * dentry)
 	 */
 	spin_lock(&dcache_lock);
 	spin_lock(&dentry->d_lock);
+
+	// If we are the holder of the last reference, make 
+	// the dentry as negative as we still keep the it 
+	// in hash list (the future reuse of the dentry by
+	// d_lookup won't have the deleted inode info any 
+	// more). --Will
 	if (atomic_read(&dentry->d_count) == 1) {
 		dentry_iput(dentry);
 		return;
 	}
 
+	// Otherwise, we unhash the dentry (current other 
+	// users can still access the inode info, but new 
+	// users afterwards can not re-use the dentry by 
+	// d_lookup). And when the last user releases this 
+	// dentry by dput, it would be free'ed. --Will
 	if (!d_unhashed(dentry))
 		__d_drop(dentry);
 
