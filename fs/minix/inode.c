@@ -120,6 +120,11 @@ static int minix_remount (struct super_block * sb, int * flags, char * data)
 		mark_buffer_dirty(sbi->s_sbh);
 	} else {
 	  	/* Mount a partition which is read-only, read-write. */
+		// Initially, the super-block state in disk (namely ms->s_state)
+		// should be valid. However, if we perform writes but don't sync 
+		// the in-memory changes, we should be aware of this. That's why 
+		// clean the valid state in disk. And when we umount the fs, 
+		// minix_put_super would sync the state back to disk. --Will
 		sbi->s_mount_state = ms->s_state;
 		ms->s_state &= ~MINIX_VALID_FS;
 		mark_buffer_dirty(sbi->s_sbh);

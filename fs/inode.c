@@ -1045,7 +1045,7 @@ static void generic_forget_inode(struct inode *inode)
 			list_move(&inode->i_list, &inode_unused);
 		inodes_stat.nr_unused++;
 		spin_unlock(&inode_lock);
-		if (!sb || (sb->s_flags & MS_ACTIVE))
+		if (sb->s_flags & MS_ACTIVE)
 			return;
 		write_inode_now(inode, 1);
 		spin_lock(&inode_lock);

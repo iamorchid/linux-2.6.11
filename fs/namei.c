@@ -462,7 +462,7 @@ static inline int __vfs_follow_link(struct nameidata *nd, const char *link)
 	}
 	res = link_path_walk(link, nd);
 out:
-	if (nd->depth || res || nd->last_type!=LAST_NORM)
+	if (nd->depth || res || nd->last_type != LAST_NORM)
 		return res;
 	/*
 	 * If it is an iterative symlinks resolution in open_namei() we

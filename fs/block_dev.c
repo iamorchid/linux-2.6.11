@@ -465,7 +465,7 @@ int bd_claim(struct block_device *bdev, void *holder)
 		res = 0;	 /* is a partition of an un-held device */
 
 	/* now impose change */
-	if (res==0) {
+	if (res == 0) {
 		/* note that for a whole device bd_holders
 		 * will be incremented twice, and bd_holder will
 		 * be set to bd_claim before being set to holder

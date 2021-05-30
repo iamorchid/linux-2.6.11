@@ -246,6 +246,15 @@ void generic_shutdown_super(struct super_block *sb)
 
 		/* Forget any remaining inodes */
 		if (invalidate_inodes(sb)) {
+			// This means that the filesystem is being unmounted (and the 
+			// superblock is being freed), but the inode structs are still 
+			// hanging around. The "self-destruct" is telling you that 
+			// eventually, this machine will crash due to this. If you see 
+			// this message you should probably plan a reboot sometime.
+			// What will happen is that eventually the kernel may try to 
+			// reference these inodes, but they now have pointers into a 
+			// freed superblock. If that superblock memory was reused for 
+			// another purpose, you'll likely crash.
 			printk("VFS: Busy inodes after unmount. "
 			   "Self-destruct in 5 seconds.  Have a nice day...\n");
 		}

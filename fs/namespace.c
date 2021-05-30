@@ -160,7 +160,7 @@ clone_mnt(struct vfsmount *old, struct dentry *root)
 		
 		// for the dentry root, it could reside under two mount points here.
 		// In the mount point old, it may not necessary to be its root dentry.
-		// Thus given an dentry alone, we can't determine its file path (witch 
+		// Thus given an dentry alone, we can't determine its file path (which 
 		// depends on both vfsmount and dentry). See  how it's used in 
 		// sys_mount with "--bind" option. @Will
 		mnt->mnt_root = dget(root);
@@ -650,9 +650,9 @@ static int do_loopback(struct nameidata *nd, char *old_name, int recurse)
 		if (recurse)
 			mnt = copy_tree(old_nd.mnt, old_nd.dentry);
 		else
-			// We use mnt + dentry to decide if we other mnt mounted on dentry. 
-			// As clone_mnt returns a new mnt, all mnts under mnt + dentry won't 
-			// be visible under new mnt + dentry. @Will
+			// We use mnt + dentry to decide if we have other mnt mounted on the 
+			// dentry. As clone_mnt returns a new mnt, all mnts under mnt + dentry 
+			// won't be visible under new mnt + dentry. @Will
 			mnt = clone_mnt(old_nd.mnt, old_nd.dentry);
 	}
 
@@ -700,7 +700,7 @@ static int do_remount(struct nameidata *nd, int flags, int mnt_flags,
 	down_write(&sb->s_umount);
 	err = do_remount_sb(sb, flags, data, 0);
 	if (!err)
-		nd->mnt->mnt_flags=mnt_flags;
+		nd->mnt->mnt_flags = mnt_flags;
 	up_write(&sb->s_umount);
 	if (!err)
 		security_sb_post_remount(nd->mnt, flags, data);
@@ -736,12 +736,13 @@ static int do_move_mount(struct nameidata *nd, char *old_name)
 	if (!IS_ROOT(nd->dentry) && d_unhashed(nd->dentry))
 		goto out2;
 
-    // Check if we have a mount point mounted on old_nd
+	// We should move the whole file system hierarchy (not 
+	// just part of it). --Will
 	err = -EINVAL;
 	if (old_nd.dentry != old_nd.mnt->mnt_root)
 		goto out2;
 
-     // Check that we should not move root mount point
+	// Check that we should not move root mount point
 	if (old_nd.mnt == old_nd.mnt->mnt_parent)
 		goto out2;
 
