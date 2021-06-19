@@ -529,6 +529,12 @@ static inline void choose_new_parent(task_t *p, task_t *reaper, task_t *child_re
 		BUG();
 }
 
+/*
+ * The arg traced really means that if the child process p is 
+ * traced by other process (namely not its original real parent). 
+ * If it's 0 (false), the child process could still be traced by 
+ * its original parent. --Will
+ */
 static inline void reparent_thread(task_t *p, task_t *father, int traced)
 {
 	/* We don't want people slaying init.  */
@@ -543,6 +549,10 @@ static inline void reparent_thread(task_t *p, task_t *father, int traced)
 	if (unlikely(traced)) {
 		/* Preserve ptrace links if someone else is tracing this child.  */
 		list_del_init(&p->ptrace_list);
+		// If the new real parent is the same as the parent that's 
+		// tracing the child, it means the tracer is in the same 
+		// thread group as original real parent and the trace is 
+		// selected as the new real parent. --Will
 		if (p->parent != p->real_parent)
 			list_add(&p->ptrace_list, &p->real_parent->ptrace_children);
 	} else {
@@ -566,6 +576,9 @@ static inline void reparent_thread(task_t *p, task_t *father, int traced)
 			 * a normal stop since it's no longer being
 			 * traced.
 			 */
+			// This is the case that the real parent has traced the 
+			// child (the argument traced is 1 if the child is traced 
+			// by other process, namely not its real parent). --Will
 			ptrace_untrace(p);
 		}
 	}

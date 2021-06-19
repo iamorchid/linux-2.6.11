@@ -1000,7 +1000,6 @@ loop_again:
 
 	for (i = 0; i < pgdat->nr_zones; i++) {
 		struct zone *zone = pgdat->node_zones + i;
-
 		zone->temp_priority = DEF_PRIORITY;
 	}
 
@@ -1038,7 +1037,6 @@ loop_again:
 scan:
 		for (i = 0; i <= end_zone; i++) {
 			struct zone *zone = pgdat->node_zones + i;
-
 			lru_pages += zone->nr_active + zone->nr_inactive;
 		}
 
@@ -1077,8 +1075,12 @@ scan:
 			sc.nr_reclaimed += reclaim_state->reclaimed_slab;
 			total_reclaimed += sc.nr_reclaimed;
 			total_scanned += sc.nr_scanned;
+			
 			if (zone->all_unreclaimable)
 				continue;
+
+			// If we have already scaned enough LRU pages for this zone,
+			// skip this zone for next scans. --Will
 			if (zone->pages_scanned >= (zone->nr_active +
 							zone->nr_inactive) * 4)
 				zone->all_unreclaimable = 1;
@@ -1114,7 +1116,6 @@ scan:
 out:
 	for (i = 0; i < pgdat->nr_zones; i++) {
 		struct zone *zone = pgdat->node_zones + i;
-
 		zone->prev_priority = zone->temp_priority;
 	}
 	if (!all_zones_ok) {

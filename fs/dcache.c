@@ -1153,7 +1153,7 @@ out:
 }
 
 /*
- * When a file is deleted, we have two options:
+ * When a file is deleted (such as unlink), we have two options:
  * - turn this dentry into a negative dentry
  * - unhash this dentry and free it.
  *
@@ -1166,7 +1166,7 @@ out:
  */
  
 /**
- * d_delete - delete a dentry
+ * d_delete - delete a dentry (such as unlink)
  * @dentry: The dentry to delete
  *
  * Turn the dentry into a negative dentry if possible, otherwise

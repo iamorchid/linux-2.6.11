@@ -158,11 +158,8 @@ clone_mnt(struct vfsmount *old, struct dentry *root)
 		atomic_inc(&sb->s_active);
 		mnt->mnt_sb = sb;
 		
-		// for the dentry root, it could reside under two mount points here.
-		// In the mount point old, it may not necessary to be its root dentry.
-		// Thus given an dentry alone, we can't determine its file path (which 
-		// depends on both vfsmount and dentry). See  how it's used in 
-		// sys_mount with "--bind" option. @Will
+		// The root here doesn't necessarily need to be old->mnt_root. See 
+		// how it's used in sys_mount with "--bind" option. @Will
 		mnt->mnt_root = dget(root);
 		
 		mnt->mnt_mountpoint = mnt->mnt_root;
@@ -1351,10 +1348,16 @@ asmlinkage long sys_pivot_root(const char __user *new_root, const char __user *p
 			goto out3;
 	} else if (!is_subdir(old_nd.dentry, new_nd.dentry))
 		goto out3;
+	
+	// The detach here doesn't decrease the parent reference count.
+	// We did so in path_release below.
 	detach_mnt(new_nd.mnt, &parent_nd);
 	detach_mnt(user_nd.mnt, &root_parent);
+
+	// The attach here increases parent refernce count.
 	attach_mnt(user_nd.mnt, &old_nd);
 	attach_mnt(new_nd.mnt, &root_parent);
+	
 	spin_unlock(&vfsmount_lock);
 	chroot_fs_refs(&user_nd, &new_nd);
 	security_sb_post_pivotroot(&user_nd, &new_nd);

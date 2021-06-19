@@ -560,6 +560,8 @@ static int follow_mount(struct vfsmount **mnt, struct dentry **dentry)
 	while (d_mountpoint(*dentry)) {
 		struct vfsmount *mounted = lookup_mnt(*mnt, *dentry);
 		if (!mounted)
+			// mount using MS_BIND but not recursive would case 
+			// this case here. --Will
 			break;
 		mntput(*mnt);
 		*mnt = mounted;

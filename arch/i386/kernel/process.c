@@ -280,6 +280,9 @@ void show_regs(struct pt_regs * regs)
  * function to call, and %edx containing
  * the "args".
  */
+// When the kernel threads exits, note that here do_exit would 
+// be called. So that the execution can be scheduled to other 
+// thread. --Will
 extern void kernel_thread_helper(void);
 __asm__(".section .text\n"
 	".align 4\n"
@@ -305,7 +308,7 @@ int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
 	// kernel_thread_helper would be run after iret). As the cs segment doesn't 
 	// change CPL, so no stack (namely ss and esp) would be reloated. Thus the 
 	// kernel mode stack would contnue to be used after iret (kernel mode stack
-	// is setup by do_fork). So we don't need to initialize reg.esp and reg.ess 
+	// is setup by do_fork). So we don't need to initialize reg.esp and reg.xss 
 	// here (which is used by user mode stack). --Will
 	regs.ebx = (unsigned long) fn;
 	regs.edx = (unsigned long) arg;

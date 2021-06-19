@@ -446,6 +446,7 @@ void page_add_anon_rmap(struct page *page,
 	index += vma->vm_pgoff;
 	index >>= PAGE_CACHE_SHIFT - PAGE_SHIFT;
 
+	// page->_mapcount is initialized to -1 (see reset_page_mapcount)
 	if (atomic_inc_and_test(&page->_mapcount)) {
 		page->index = index;
 		page->mapping = (struct address_space *) anon_vma;
