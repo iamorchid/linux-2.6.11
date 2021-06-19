@@ -1462,8 +1462,10 @@ void do_notify_parent(struct task_struct *tsk, int sig)
 
 	// If the task is not traced, it must be the leader of a thread 
 	// group with all other processes in the same thread group already 
-	// gone. Thus the real-parent only wants notification when all 
-	// processes in the thread group of its child has died. --Will
+	// gone (the leader need not to be the last one that exits, see 
+	// how release_task handles this). Thus the real-parent only wants 
+	// notification when all processes in the thread group of its child 
+	// has died. --Will
 	BUG_ON(!tsk->ptrace &&
 	       (tsk->group_leader != tsk || !thread_group_empty(tsk)));
 

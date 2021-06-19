@@ -506,7 +506,25 @@ void exit_mm(struct task_struct * tsk)
 		wait_for_completion(&mm->core_done);
 		down_read(&mm->mmap_sem);
 	}
+
+	// Why we need to increase the count here? And when do we 
+	// decrease the count? --Will
+	// The following mmput would call mmdrop if we are the last 
+	// process in a thread group. If we don't increase the mm's 
+	// count here, mm could be free'd there by mmdrop and then 
+	// pgd of this process would also be released also. However, 
+	// the pgd is still needed (though we only need to execute 
+	// in kernel mode before scheduling to next process). So 
+	// here we have to increase the count to avoid such issue.
+	// 
+	// The trick we play here is set tsk->mm to null (so after 
+	// this call, the tsk would look somewhat like a kernel 
+	// thread whose task->mm is null). After context swith, 
+	// the tsk->active_mm would be released (see context_switch 
+	// and finish_task_switch)
+	//
 	atomic_inc(&mm->mm_count);
+	
 	if (mm != tsk->active_mm) BUG();
 	/* more a memory barrier than a real lock */
 	task_lock(tsk);
@@ -776,12 +794,12 @@ static void exit_notify(struct task_struct *tsk)
 		// If tsk is traced and the tracer is not interested in the 
 		// signal (namely the tracer's signal hander of SIGCHLD is 
 		// set to SIG_IGN. Note the handler is SIG_DFL by default), 
-		// tsk->exit_signal would be set -1. However, the tsk won't be 
-		// released as tsk->ptrace is still not 0 (see logic below). 
-		// If the tracer doesn't call wait4(), tsk remains in memory 
-		// until tracer exits (see ptrace_dead collecting above).
-		// Is this a bug? Or the ZOMBIE should always be reaped by 
-		// tracer through wait4()? --Will
+		// tsk->exit_signal would be set -1 by do_notify_parent. 
+		// However, the tsk won't be released as tsk->ptrace is still 
+		// not 0 (see logic below). If the tracer doesn't call wait4(), 
+		// tsk remains in memory until tracer exits (see ptrace_dead 
+		// collecting above). Is this a bug? Or the ZOMBIE should 
+		// always be reaped by tracer through wait4()? --Will
 		do_notify_parent(tsk, signal);
 	} else if (tsk->ptrace) {
 		do_notify_parent(tsk, SIGCHLD);
