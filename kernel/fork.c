@@ -852,7 +852,7 @@ static task_t *copy_process(unsigned long clone_flags,
 	p->pid = pid;
 	retval = -EFAULT;
 
-	// Note we can't set child_tidptr here as the execution is 
+	// Note we can't set child_tidptr here as the execution is in 
 	// the address space of parent. See schedule_tail (which is 
 	// called in ret_from_fork before child returns to user mode).
 	// --Will

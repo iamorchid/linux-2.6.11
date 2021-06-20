@@ -882,6 +882,14 @@ fastcall NORET_TYPE void do_exit(long code)
 	group_dead = atomic_dec_and_test(&tsk->signal->live);
 	if (group_dead)
 		acct_process(code);
+
+	// The main steps to clean VM relevant memories (Will):
+	// 1. exit_mm frees user-space related memory (like unmap 
+	//    vm areas, page tables and free vm aear structures ect.)
+	// 2. after scheduling to next process, it calls mmdrop 
+	//    to release pgd, ldt and mm struct
+	// 3. after release_task (namely wait4'ed by parent), it 
+	//    releases kernel-mode stack and task struct.
 	exit_mm(tsk);
 
 	exit_sem(tsk);

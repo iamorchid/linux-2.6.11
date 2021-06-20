@@ -946,6 +946,9 @@ unsigned long do_mmap_pgoff(struct file * file, unsigned long addr,
 	if (file) {
 		switch (flags & MAP_TYPE) {
 		case MAP_SHARED:
+			// If PROT_WRITE is specified in prot, the changes to mmap'ed 
+			// memory would be backed by the file (no COW for this case). 
+			// Thus we can SHARE changes with other processes. --Will
 			if ((prot&PROT_WRITE) && !(file->f_mode&FMODE_WRITE))
 				return -EACCES;
 
@@ -962,12 +965,21 @@ unsigned long do_mmap_pgoff(struct file * file, unsigned long addr,
 			if (locks_verify_locked(inode))
 				return -EAGAIN;
 
+			// If the file is only readable (and we've ensured that PROT_WRITE
+			// is not set in prot), no need to set VM_SHARED (though we allow 
+			// this to be set using VM_MAYSHARE) as it won't be used for this 
+			// case. --Will
 			vm_flags |= VM_SHARED | VM_MAYSHARE;
 			if (!(file->f_mode & FMODE_WRITE))
 				vm_flags &= ~(VM_MAYWRITE | VM_SHARED);
 
 			/* fall through */
 		case MAP_PRIVATE:
+			// For MAP_PRIVATE, we don't require the file MUST be writable when 
+			// prot specifies PROT_WRITE. Because we would use COW for this case. 
+			// I think this is applied for loading the data segment of a shared 
+			// library (the file is not writable for normal user but the process
+			// should be able to change the data). --Will
 			if (!(file->f_mode & FMODE_READ))
 				return -EACCES;
 			break;
@@ -978,6 +990,8 @@ unsigned long do_mmap_pgoff(struct file * file, unsigned long addr,
 	} else {
 		switch (flags & MAP_TYPE) {
 		case MAP_SHARED:
+			// anonymous SHARED memory, which can be used to share data 
+			// between ancestor process and its descendants. --Will
 			vm_flags |= VM_SHARED | VM_MAYSHARE;
 			break;
 		case MAP_PRIVATE:
